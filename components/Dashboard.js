@@ -112,11 +112,9 @@ export default function Dashboard({ edition }) {
   const [rule, setRule] = useState("simple");
   const [uploadedHours, setUploadedHours] = useState(null);
   const [saveNote, setSaveNote] = useState("");
-  const [snaps, setSnaps] = useState([]);
-  const [snapLabel, setSnapLabel] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  // last upload and saved snapshots come back from the database, so the page survives a reload
+  // The last upload comes back from the database, so the page survives a reload.
   useEffect(() => {
     fetch(`/api/uploads?slug=${edition.slug}`).then(r => r.json()).then(d => {
       if (!d.storage) { setSaveNote("ยังไม่ได้เชื่อมฐานข้อมูล — ปิดหน้าแล้วต้องอัปโหลดใหม่"); return; }
@@ -130,13 +128,8 @@ export default function Dashboard({ edition }) {
         setFileInfo(`ไฟล์ล่าสุดที่บันทึกไว้: ${d.upload.file_name} · ${num(d.upload.row_count)} แถว · อัปโหลด ${new Date(d.upload.uploaded_at).toLocaleString("th-TH")}`);
       }
     }).catch(() => {});
-    loadSnaps();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edition.slug]);
-
-  function loadSnaps() {
-    fetch(`/api/snapshots?slug=${edition.slug}`).then(r => r.json()).then(d => setSnaps(d.snapshots || [])).catch(() => {});
-  }
 
   async function onFile(f) {
     if (!f) return;
@@ -242,17 +235,6 @@ export default function Dashboard({ edition }) {
       metaPurch: (ads?.purchases || []).filter(p => p.day >= from && p.day <= to).reduce((a, p) => a + p.n, 0),
     };
   }, [tickets, ads, range, edition, rule, uploadedHours]);
-
-  function saveSnapshot() {
-    const metrics = {
-      sold: view.sumT(view.inR), revenue: view.sumV(view.inR), tracked: view.sumT(view.tracked), trackedRevenue: view.sumV(view.tracked),
-      strict: view.sumT(view.strict), view: view.sumT(view.strict.filter(o => o.kind === "View")), during: view.sumT(view.tracked),
-      refAd: view.sumT(view.refAd), spend: view.spend, creatives: view.creatives.map(c => ({ name: c.name, t: c.t, v: c.v })),
-    };
-    fetch("/api/snapshots", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: edition.slug, label: snapLabel, rule, from: range[0], to: range[1], metrics }) })
-      .then(r => r.json()).then(d => { if (d.error) setSaveNote(d.error); else { setSnapLabel(""); loadSnaps(); } });
-  }
 
   async function onAdsFile(f) {
     if (!f) return;
@@ -412,21 +394,6 @@ export default function Dashboard({ edition }) {
             </div>
           </div>
 
-          <div className="card">
-            <h2>บันทึกตัวเลขแต่ละรอบ</h2>
-            <p className="muted small">กดบันทึกก่อนพรีเซ็นต์ ตัวเลขรอบนั้นจะถูกเก็บไว้ย้อนดูได้ แม้ข้อมูลจะอัปเดตทีหลัง</p>
-            <div className="toolbar" style={{ marginTop: 0 }}>
-              <input className="text" placeholder="ชื่อรอบ เช่น พรีเซ็นต์ลูกค้า 23 ต.ค." value={snapLabel} onChange={e => setSnapLabel(e.target.value)} />
-              <button className="primary" onClick={saveSnapshot}>บันทึกตัวเลขรอบนี้</button>
-            </div>
-            {snaps.length > 0 && <div className="tbl"><table>
-              <thead><tr><th>บันทึกเมื่อ</th><th>ชื่อรอบ</th><th>กติกา</th><th>ช่วงวันที่</th><th>ยอดขาย</th><th>Ad-tracked</th><th>มี Ad ID</th><th>ช่วงแอดรัน</th></tr></thead>
-              <tbody>{snaps.map(s => <tr key={s.id}>
-                <td>{new Date(s.taken_at).toLocaleString("th-TH")}</td><td>{s.label || "—"}</td><td>{s.rule === "simple" ? "ง่าย" : "เข้ม"}</td>
-                <td>{s.range_from} – {s.range_to}</td><td>{num(s.metrics.sold)}</td><td><b>{num(s.metrics.tracked)}</b></td>
-                <td>{num(s.metrics.strict)}</td><td>{num(s.metrics.during)}</td></tr>)}</tbody>
-            </table></div>}
-          </div>
         </>
       )}
     </main>
