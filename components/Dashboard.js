@@ -315,7 +315,6 @@ export default function Dashboard({ edition }) {
                   <p className="creative-total"><b>{num(c.t)}</b> ยอดที่จับคู่ได้ · {baht(c.v)}</p>
                   <p className="creative-breakdown">Ref Ad {num(c.refAd)} · Ref Org from Ad {num(c.org)} · Direct (Pixel) {num(c.direct)}</p>
                   <div className="creative-range"><span>SELECTED RANGE</span><b>{num(c.t)}</b><small>{range[0]} – {range[1]}</small></div>
-                  <p className="creative-cost">ค่า Meta Ads {c.spend ? baht(c.spend) : "—"}{c.spend && c.t ? ` · ${baht(c.spend / c.t)}/ใบ` : ""}</p>
                 </div>
               </article>)}
             </div>
