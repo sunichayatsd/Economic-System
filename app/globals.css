@@ -42,6 +42,9 @@ select{font:inherit;padding:6px 28px 6px 8px;border:1px solid var(--line);border
 .pivot-summary{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:12px}.pivot-summary span,.pivot-summary small{color:var(--muted)}.pivot-summary b{font:600 26px "IBM Plex Mono",monospace}
 .pivot-search{min-width:190px!important}.pivot-subtotal td{font-weight:600;background:#f2f5ff}
 .pivot-table th:nth-child(2),.pivot-table td:nth-child(2){text-align:left}
+.performance{margin-top:18px}.performance-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}.performance-head h2{font-size:18px;margin:0}.performance-head p{margin:2px 0 0;color:var(--muted);font-size:13px}.performance-range{font-size:11px;letter-spacing:.08em;color:var(--muted)}
+.performance-layout{display:grid;grid-template-columns:minmax(210px,.75fr) minmax(320px,1.25fr);gap:26px;align-items:center}.performance-stats{display:grid;gap:9px}.performance-stats>div{padding:12px 14px;border:1px solid #dde6f8;border-radius:9px;background:#f8faff}.performance-stats span,.performance-stats small{display:block;color:var(--muted);font-size:12px}.performance-stats b{display:block;font:600 23px "IBM Plex Mono",monospace;margin:2px 0}
+.css-funnel{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0}.funnel-stage{width:var(--funnel-width);min-width:230px;max-width:100%;padding:10px 16px;color:#fff;text-align:center;clip-path:polygon(4% 0,96% 0,100% 100%,0 100%)}.funnel-stage span,.funnel-stage small{display:block;font-size:11px;opacity:.88}.funnel-stage b{display:block;font:600 22px "IBM Plex Mono",monospace;line-height:1.15}.funnel-impression{background:linear-gradient(110deg,#4e80df,#2a62d6)}.funnel-cta{background:linear-gradient(110deg,#3777bd,#235092)}.funnel-sales{background:linear-gradient(110deg,#22506f,#163c56)}.performance-note{font-size:12px;color:var(--muted);margin:14px 0 0}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:10px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
 .kpi span{display:block;font-size:12.5px;color:var(--muted)}
@@ -77,5 +80,5 @@ input.text{font:inherit;padding:7px 10px;border:1px solid var(--line);border-rad
 .warn{color:var(--bad);font-size:13px}
 .checks{margin:0;padding-left:18px;font-size:13.5px}
 .checks .good{color:var(--good)} .checks .bad{color:var(--bad)}
-@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid2,.series,.sync-grid,.creative-grid{grid-template-columns:1fr}}
+@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid2,.series,.sync-grid,.creative-grid,.performance-layout{grid-template-columns:1fr}}
 @media (max-width:520px){.creative-card{padding:12px;gap:12px}.creative-image{width:105px;min-width:105px;height:150px}.creative-body h3{font-size:15px}.creative-total b{font-size:24px}}

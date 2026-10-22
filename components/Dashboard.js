@@ -180,6 +180,7 @@ export default function Dashboard({ edition }) {
     const metaSpendIn = (ads?.metaSpend || []).filter(s => s.day >= from && s.day <= to);
     const spend = spendIn.reduce((a, s) => a + s.cost, 0);
     const metaSpend = metaSpendIn.reduce((a, s) => a + s.cost, 0);
+    const metaImpressions = metaSpendIn.reduce((a, s) => a + (s.impressions || 0), 0);
     const spendByPlatform = spendIn.reduce((all, s) => ({ ...all, [s.platform]: (all[s.platform] || 0) + s.cost }), {});
 
     const days = [];
@@ -227,7 +228,7 @@ export default function Dashboard({ edition }) {
     const unmapped = [...new Set(strict.filter(o => o.creative.startsWith("ยังไม่ได้จับคู่")).map(o => o.ref))];
 
     return {
-      result, inR, free, tracked, strict, refAd, sumT, sumV, during, simpleTracked, spend, metaSpend, spendByPlatform, days, tierOf, adHours,
+      result, inR, free, tracked, strict, refAd, sumT, sumV, during, simpleTracked, spend, metaSpend, metaImpressions, spendByPlatform, days, tierOf, adHours,
       refs: Object.values(byRef).sort((a, b) => b.t - a.t),
       creatives: Object.values(byCreative).sort((a, b) => b.t - a.t),
       types: Object.values(byType).sort((a, b) => b.t - a.t),
@@ -313,6 +314,8 @@ export default function Dashboard({ edition }) {
             )}
             <Kpi label="Cost Per Ticket" big={ads?.spendComplete ? baht(view.spend / Math.max(1, view.sumT(view.inR))) : "—"} sub={ads?.spendComplete ? `ค่าแอดรวม ÷ Paid Ticket ${num(view.sumT(view.inR))} ใบ` : "รอข้อมูลค่าแอดให้ครบทุกแพลตฟอร์มก่อนคำนวณ"} />
           </div>
+
+          <OverallPerformance view={view} ads={ads} rule={rule} />
 
           <div className="card">
             <h2>Ad-tracked รายวัน</h2>
@@ -407,4 +410,28 @@ export default function Dashboard({ edition }) {
 
 function Kpi({ label, big, sub, hl }) {
   return <div className={"kpi" + (hl ? " hl" : "")}><span>{label}</span><b>{big}</b><small>{sub}</small></div>;
+}
+
+function OverallPerformance({ view, ads, rule }) {
+  const paid = view.sumT(view.inR);
+  const cta = view.sumT(rule === "simple" ? view.simpleTracked : view.tracked);
+  const impressions = view.metaImpressions;
+  const relative = impressions ? [100, Math.max(36, Math.round((cta / impressions) * 16000)), Math.max(28, Math.round((paid / impressions) * 16000))] : [100, 68, 46];
+  const ctaLabel = rule === "simple" ? "ยอดบัตรผ่าน CTA แอด" : "ยอดบัตรที่จับคู่กับแอด";
+  return <section className="performance card">
+    <div className="performance-head"><div><h2>Overall Performance</h2><p>ภาพรวมแบบเข้าใจง่าย: โฆษณาถูกเห็น → เกิดยอดผ่าน CTA → ยอดขายบัตร</p></div><span className="performance-range">SELECTED RANGE</span></div>
+    <div className="performance-layout">
+      <div className="performance-stats">
+        <div><span>ค่าแอดรวม</span><b>{ads?.spendComplete ? baht(view.spend) : "—"}</b><small>{ads?.spendComplete ? "รวมทุก Ads Manager" : "รอข้อมูลค่าแอดให้ครบ"}</small></div>
+        <div><span>Revenue รวม</span><b>{baht(view.sumV(view.inR))}</b><small>จาก Paid Ticket ทั้งหมด</small></div>
+        <div><span>Cost Per Ticket</span><b>{ads?.spendComplete && paid ? baht(view.spend / paid) : "—"}</b><small>ค่าแอดรวม ÷ บัตร Paid</small></div>
+      </div>
+      <div className="css-funnel" aria-label="ภาพรวมเส้นทางยอดขาย">
+        <div className="funnel-stage funnel-impression" style={{ "--funnel-width": `${relative[0]}%` }}><span>1 · โฆษณาถูกเห็น</span><b>{impressions ? num(impressions) : "รอข้อมูล"}</b><small>Meta Ads impressions</small></div>
+        <div className="funnel-stage funnel-cta" style={{ "--funnel-width": `${relative[1]}%` }}><span>2 · {ctaLabel}</span><b>{num(cta)} ใบ</b><small>{paid ? `${pct(cta, paid)} ของยอดขายทั้งหมด` : "—"}</small></div>
+        <div className="funnel-stage funnel-sales" style={{ "--funnel-width": `${relative[2]}%` }}><span>3 · Paid Ticket</span><b>{num(paid)} ใบ</b><small>{baht(view.sumV(view.inR))} Revenue</small></div>
+      </div>
+    </div>
+    <p className="performance-note">หมายเหตุ: “ยอดผ่าน CTA แอด” นับจาก ref CTA ที่ตั้งค่าไว้และช่วงเวลาที่แอดรัน จึงช่วยดูภาพรวม ไม่ได้ยืนยันว่าโฆษณาเป็นสาเหตุของทุกการซื้อ</p>
+  </section>;
 }
