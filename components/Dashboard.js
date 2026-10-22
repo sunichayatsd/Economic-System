@@ -214,17 +214,29 @@ export default function Dashboard({ edition }) {
 
   return (
     <main className="wrap">
-      <section className={"drop" + (over ? " over" : "") + (tickets ? " ok" : "")}
-        onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
-        onDrop={e => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]); }}>
-        <b>ไฟล์ Zip Event</b>
-        <span>ลาก Excel ที่ export จาก Zipevent มาวาง หรือ <label className="link">เลือกไฟล์<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onFile(e.target.files[0])} /></label></span>
-        <small className={err ? "err" : "muted"}>{err || fileInfo || "ไฟล์อ่านในเบราว์เซอร์นี้เท่านั้น ข้อมูลผู้ซื้อไม่ถูกส่งขึ้นเซิร์ฟเวอร์"}</small>
-        {saveNote && <small className="muted">{saveNote}</small>}
-        {tickets && <small className={adsErr ? "err" : "muted"}>{adsErr ? "⚠ " + adsErr : ads
-          ? <>ข้อมูล Meta: {ads.start} – {ads.end} · ดึงเมื่อ {new Date(ads.fetchedAt).toLocaleString("th-TH")}{ads.warning ? " · " + ads.warning : ""} ·{" "}
-              <button className="linkbtn" disabled={refreshing} onClick={() => loadAds(true)}>{refreshing ? "กำลังดึง… (~30 วินาที)" : "ดึงใหม่ตอนนี้"}</button></>
-          : "กำลังดึงข้อมูลแอดจาก Supermetrics… (~30 วินาที)"}</small>}
+      <section className="sync-grid" aria-label="อัปเดตข้อมูล Dashboard">
+        <div className={"sync-card zip-sync" + (over ? " over" : "") + (tickets ? " ok" : "")}
+          onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+          onDrop={e => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]); }}>
+          <span className="sync-kicker">1 · ยอดขายบัตร</span>
+          <h2>อัปเดตไฟล์ Zipevent</h2>
+          <p>อัปโหลด Excel ล่าสุดจาก Zipevent เพื่ออัปเดตยอด Paid Ticket และรายได้</p>
+          <label className="primary upload-action">เลือกไฟล์ Zipevent<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onFile(e.target.files[0])} /></label>
+          <small className={err ? "err" : "muted"}>{err || fileInfo || "ข้อมูลที่บันทึกไว้จะกลับมาอัตโนมัติหลัง refresh"}</small>
+          {saveNote && <small className="muted">{saveNote}</small>}
+        </div>
+
+        <div className="sync-card ads-sync">
+          <span className="sync-kicker">2 · ค่าโฆษณา</span>
+          <h2>อัปเดตยอด Ads จาก Supermetrics</h2>
+          <p>ดึงยอดค่าใช้จ่ายล่าสุดของแคมเปญ Event จากทุก Ads Manager ที่ตั้งค่าไว้</p>
+          <button className="primary" disabled={refreshing} onClick={() => loadAds(true)}>
+            {refreshing ? "กำลังอัปเดตจาก Supermetrics…" : "อัปเดตยอด Ads"}
+          </button>
+          <small className={adsErr ? "err" : "muted"}>{adsErr ? "⚠ " + adsErr : ads
+            ? <>ข้อมูล {ads.start} – {ads.end} · อัปเดต {new Date(ads.fetchedAt).toLocaleString("th-TH")}{ads.warning ? " · " + ads.warning : ""}{edition.spendSources?.length && !ads.spendComplete ? " · รอข้อมูลบาง Ads Manager" : ""}</>
+            : "กดปุ่มเพื่อดึงยอดล่าสุดจาก Supermetrics"}</small>
+        </div>
       </section>
 
       {view && (

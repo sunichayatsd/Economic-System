@@ -23,8 +23,13 @@ button{font:inherit;cursor:pointer;border-radius:8px;padding:8px 14px}
 .years{display:flex;flex-direction:column;gap:6px}
 .year{display:block;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink);text-decoration:none;font-weight:500}
 .year:hover{border-color:var(--accent);color:var(--accent)}
-.drop{background:var(--surface);border:1.5px dashed var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px}
-.drop.over,.drop.ok{border-color:var(--accent)} .drop.ok{border-style:solid}
+.sync-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sync-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-height:208px}
+.sync-card.zip-sync{border-style:dashed;border-width:1.5px}
+.sync-card.zip-sync.over,.sync-card.zip-sync.ok{border-color:var(--accent)} .sync-card.zip-sync.ok{border-style:solid}
+.sync-card h2{font-size:18px;margin:0}.sync-card p{margin:0;min-height:46px;color:var(--muted)}
+.sync-card small{margin-top:auto}.sync-kicker{color:var(--accent);font-size:12px;font-weight:600;letter-spacing:.03em}
+.upload-action{display:inline-flex;align-items:center}
 .link{color:var(--accent);cursor:pointer;text-decoration:underline}
 .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}
 .toolbar label{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
@@ -56,4 +61,4 @@ input.text{font:inherit;padding:7px 10px;border:1px solid var(--line);border-rad
 .warn{color:var(--bad);font-size:13px}
 .checks{margin:0;padding-left:18px;font-size:13.5px}
 .checks .good{color:var(--good)} .checks .bad{color:var(--bad)}
-@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid2,.series{grid-template-columns:1fr}}
+@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid2,.series,.sync-grid{grid-template-columns:1fr}}
