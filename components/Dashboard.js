@@ -295,7 +295,7 @@ export default function Dashboard({ edition }) {
             <Kpi label="ยอดขาย (Paid)" big={num(view.sumT(view.inR))} sub={`${baht(view.sumV(view.inR))} · ไม่นับบัตรฟรี ${num(view.free)} ใบ`} />
             <Kpi hl label={rule === "simple" ? "Ad-tracked (CTA ในช่วงแอดรัน)" : "Ad-tracked (มี Ad ID)"} big={num(view.sumT(view.tracked))} sub={`${pct(view.sumT(view.tracked), view.sumT(view.inR))} ของยอดขาย · ${baht(view.sumV(view.tracked))}`} />
             {rule === "simple"
-              ? <Kpi label="ยอดอื่นๆ / ไม่เข้าเกณฑ์" big={num(view.sumT(view.inR) - view.sumT(view.tracked))} sub={`${baht(view.sumV(view.inR) - view.sumV(view.tracked))}`} />
+              ? <Kpi label="Revenue รวม" big={baht(view.sumV(view.inR))} sub={`Paid Ticket ${num(view.sumT(view.inR))} ใบ · ไม่นับบัตรฟรี ${num(view.free)} ใบ`} />
               : <Kpi label="คลิก/สแกนจริง · แค่เห็นแอด" big={`${num(view.sumT(view.tracked.filter(o => o.kind !== "View")))} · ${num(view.sumT(view.tracked.filter(o => o.kind === "View")))}`} sub="เห็น = Meta 1-day view ไม่ได้คลิก" />}
             {edition.spendSources?.length ? (
               <Kpi label="ค่าแอดทุก Ads Manager · Cost per Ticket"
