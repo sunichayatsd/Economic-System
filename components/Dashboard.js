@@ -90,7 +90,11 @@ export default function Dashboard({ edition }) {
     fetch(`/api/uploads?slug=${edition.slug}`).then(r => r.json()).then(d => {
       if (!d.storage) { setSaveNote("ยังไม่ได้เชื่อมฐานข้อมูล — ปิดหน้าแล้วต้องอัปโหลดใหม่"); return; }
       if (d.upload && !tickets) {
-        const t = d.upload.tickets;
+        // `jsonb` can arrive from the server as either an array or a JSON string,
+        // depending on the database connection. Normalise it before rendering so
+        // a saved Zipevent upload reliably comes back after a browser refresh.
+        const t = typeof d.upload.tickets === "string" ? JSON.parse(d.upload.tickets) : d.upload.tickets;
+        if (!Array.isArray(t)) throw new Error("รูปแบบข้อมูลที่บันทึกไว้ไม่ถูกต้อง");
         setTickets(t); setRange([d.upload.first_day, d.upload.last_day]);
         setFileInfo(`ไฟล์ล่าสุดที่บันทึกไว้: ${d.upload.file_name} · ${num(d.upload.row_count)} แถว · อัปโหลด ${new Date(d.upload.uploaded_at).toLocaleString("th-TH")}`);
       }
