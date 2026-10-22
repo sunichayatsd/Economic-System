@@ -279,6 +279,10 @@ export default function Dashboard({ edition }) {
         </div>
       </section>
 
+      <div className="pivot-entry">
+        <Link className="ghost pivot-link" href={`/event/${edition.slug}/pivot`}>ตารางวิเคราะห์ (ทดลอง)</Link>
+      </div>
+
       {view && (
         <>
           <div className="toolbar">
@@ -289,7 +293,6 @@ export default function Dashboard({ edition }) {
               <button className={rule === "strict" ? "on" : ""} onClick={() => setRule("strict")} disabled={!ads}>กติกาเข้ม: ต้องมี Ad ID</button>
             </div>
             <button className="ghost" onClick={downloadLabels} disabled={!ads}>ดาวน์โหลดป้ายสำหรับ Lark (CSV)</button>
-            <Link className="ghost pivot-link" href={`/event/${edition.slug}/pivot`}>ตารางวิเคราะห์ (ทดลอง)</Link>
           </div>
 
           <h2 className="h">Overall</h2>
