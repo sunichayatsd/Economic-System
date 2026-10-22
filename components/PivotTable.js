@@ -94,7 +94,7 @@ export default function PivotTable({ edition }) {
       </section>
       <section className="card">
         <div className="pivot-summary"><span>รวมทั้งหมด</span><b>{number(pivot.total.count)} ใบ</b><small>Revenue {baht(pivot.total.revenue)}</small></div>
-        <div className="tbl"><table><thead><tr><th>{dimensions.find(([value]) => value === primary)?.[1]}</th><th>{dimensions.find(([value]) => value === secondary)?.[1]}</th><th>Count: Ticket Type</th><th>Sum: Price</th></tr></thead><tbody>
+        <div className="tbl"><table className="pivot-table"><thead><tr><th>{dimensions.find(([value]) => value === primary)?.[1]}</th><th>{dimensions.find(([value]) => value === secondary)?.[1]}</th><th>Count: Ticket Type</th><th>Sum: Price</th></tr></thead><tbody>
           {pivot.groups.map(group => {
             const subtotal = group.children.reduce((sum, row) => ({ count: sum.count + row.count, revenue: sum.revenue + row.revenue }), { count: 0, revenue: 0 });
             return <GroupRows group={group} subtotal={subtotal} key={group.name} />;
