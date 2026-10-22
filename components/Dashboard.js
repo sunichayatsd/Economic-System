@@ -146,7 +146,10 @@ export default function Dashboard({ edition }) {
       const r = (byRef[k] ||= { name: k, t: 0, v: 0, ad: 0 }); r.t += o.t; r.v += o.v; if (o.label === "Ref Ad") r.ad += o.t;
     }
     const spendIn = (ads?.spend || []).filter(s => s.day >= from && s.day <= to);
+    const metaSpendIn = (ads?.metaSpend || []).filter(s => s.day >= from && s.day <= to);
     const spend = spendIn.reduce((a, s) => a + s.cost, 0);
+    const metaSpend = metaSpendIn.reduce((a, s) => a + s.cost, 0);
+    const spendByPlatform = spendIn.reduce((all, s) => ({ ...all, [s.platform]: (all[s.platform] || 0) + s.cost }), {});
 
     const days = [];
     for (let d = new Date(from + "T00:00:00Z"); d.toISOString().slice(0, 10) <= to; d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
@@ -157,7 +160,7 @@ export default function Dashboard({ edition }) {
       c.t += o.t; c.v += o.v; if (o.kind === "View") c.view += o.t;
       if (o.label === "Ref Ad") c.refAd += o.t; else if (o.label === "Direct Ads") c.direct += o.t; else c.org += o.t;
     }
-    for (const s of spendIn) {
+    for (const s of metaSpendIn) {
       const name = creativeFromAdName(s.adName);
       const k = Object.keys(byCreative).find(k => k.toLowerCase().replace(/\s/g, "") === name.toLowerCase().replace(/\s/g, "")) || name;
       (byCreative[k] ||= { name: k, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, spend: 0 }).spend += s.cost;
@@ -170,7 +173,7 @@ export default function Dashboard({ edition }) {
     const unmapped = [...new Set(strict.filter(o => o.creative.startsWith("ยังไม่ได้จับคู่")).map(o => o.ref))];
 
     return {
-      result, inR, free, tracked, strict, refAd, sumT, sumV, during, spend, days, tierOf, adHours,
+      result, inR, free, tracked, strict, refAd, sumT, sumV, during, spend, metaSpend, spendByPlatform, days, tierOf, adHours,
       refs: Object.values(byRef).sort((a, b) => b.t - a.t),
       creatives: Object.values(byCreative).sort((a, b) => b.t - a.t),
       types: Object.values(byType).sort((a, b) => b.t - a.t),
@@ -239,7 +242,15 @@ export default function Dashboard({ edition }) {
             {rule === "simple"
               ? <Kpi label="ขายตอนแอดไม่รัน" big={num(view.sumT(view.inR) - view.sumT(view.during))} sub={`${baht(view.sumV(view.inR) - view.sumV(view.during))}`} />
               : <Kpi label="คลิก/สแกนจริง · แค่เห็นแอด" big={`${num(view.sumT(view.tracked.filter(o => o.kind !== "View")))} · ${num(view.sumT(view.tracked.filter(o => o.kind === "View")))}`} sub="เห็น = Meta 1-day view ไม่ได้คลิก" />}
-            <Kpi label="ค่าแอด Meta · ROAS" big={ads ? baht(view.spend) : "—"} sub={ads && view.spend ? `ROAS ${(view.sumV(view.tracked) / view.spend).toFixed(2)}x · ${baht(view.spend / Math.max(1, view.sumT(view.tracked)))}/ใบ` : "ไม่รวม Google Ads"} />
+            {edition.spendSources?.length ? (
+              <Kpi label="ค่าแอดทุก Ads Manager · Cost per Ticket"
+                big={ads?.spendComplete ? baht(view.spend) : "—"}
+                sub={ads?.spendComplete
+                  ? `${baht(view.spend / Math.max(1, view.sumT(view.inR)))}/Paid Ticket · ${num(view.sumT(view.inR))} ใบ · ${Object.entries(view.spendByPlatform).map(([p, v]) => `${p} ${baht(v)}`).join(" · ")}`
+                  : ads ? "รอข้อมูลค่าแอดให้ครบทุกแพลตฟอร์มก่อนคำนวณ" : "กำลังดึงค่าแอดทุกแพลตฟอร์ม"} />
+            ) : (
+              <Kpi label="ค่าแอด Meta · ROAS" big={ads ? baht(view.spend) : "—"} sub={ads && view.spend ? `ROAS ${(view.sumV(view.tracked) / view.spend).toFixed(2)}x · ${baht(view.spend / Math.max(1, view.sumT(view.tracked)))}/ใบ` : ""} />
+            )}
             <Kpi label="คลิกลิงก์แอดจริง (ref ad-)" big={num(view.sumT(view.refAd))} sub={`ขั้นต่ำที่พิสูจน์ได้ · ${baht(view.sumV(view.refAd))}`} />
           </div>
 
@@ -281,7 +292,7 @@ export default function Dashboard({ edition }) {
                 ))}
                 <tr className="tot"><td>รวม</td>
                   {["refAd", "org", "direct", "t", "view"].map(k => <td key={k}>{num(view.creatives.reduce((a, c) => a + c[k], 0))}</td>)}
-                  <td>{baht(view.creatives.reduce((a, c) => a + c.v, 0))}</td><td>{ads ? baht(view.spend) : "—"}</td><td></td></tr>
+                  <td>{baht(view.creatives.reduce((a, c) => a + c.v, 0))}</td><td>{ads ? baht(view.metaSpend) : "—"}</td><td></td></tr>
               </tbody>
             </table></div>
             {view.unmapped.length > 0 && <p className="warn">ref code ของแอดที่ยังไม่รู้ว่าเป็นชิ้นงานไหน: {view.unmapped.map(r => <code key={r}>{r}</code>)} — เพิ่มใน <code>refCreative</code> ของ Event นี้</p>}
