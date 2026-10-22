@@ -18,6 +18,13 @@ const sameCreative = (a, b) => {
   const right = String(b).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "");
   return left === right || left.startsWith(right) || right.startsWith(left);
 };
+const simpleCreativeFor = (order, edition) => {
+  if (!order.ref) return "ไม่มี ref / ไม่ระบุชิ้นงาน";
+  const mapped = (edition.adRefCodes || {})[order.ref] || creativeForRef(order.ref, edition);
+  if (mapped) return mapped;
+  if (/^website-/i.test(order.ref)) return "Website / ไม่ระบุชิ้นงาน";
+  return "ลิงก์อื่นๆ / ไม่ระบุชิ้นงาน";
+};
 const SIMPLE_TIERS = [
   { key: "ขายช่วงแอดรัน", color: "#2a62d6" },
   { key: "แอดไม่รัน", color: "#d6d4cc" },
@@ -165,10 +172,17 @@ export default function Dashboard({ edition }) {
     for (let d = new Date(from + "T00:00:00Z"); d.toISOString().slice(0, 10) <= to; d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
 
     const byCreative = {};
-    for (const o of strict) {
-      const c = (byCreative[o.creative] ||= { name: o.creative, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, spend: 0 });
-      c.t += o.t; c.v += o.v; if (o.kind === "View") c.view += o.t;
-      if (o.label === "Ref Ad") c.refAd += o.t; else if (o.label === "Direct Ads") c.direct += o.t; else c.org += o.t;
+    const creativeOrders = rule === "simple" ? during : strict;
+    for (const o of creativeOrders) {
+      const name = rule === "simple" ? simpleCreativeFor(o, edition) : o.creative;
+      const c = (byCreative[name] ||= { name, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, linked: 0, noRef: 0, spend: 0 });
+      c.t += o.t; c.v += o.v;
+      if (rule === "simple") {
+        if (o.ref) c.linked += o.t; else c.noRef += o.t;
+      } else {
+        if (o.kind === "View") c.view += o.t;
+        if (o.label === "Ref Ad") c.refAd += o.t; else if (o.label === "Direct Ads") c.direct += o.t; else c.org += o.t;
+      }
     }
     for (const s of metaSpendIn) {
       const name = creativeFromAdName(s.adName);
@@ -300,7 +314,7 @@ export default function Dashboard({ edition }) {
           </div>
 
           {view.creatives.length > 0 && <section className="creative-section">
-            <div className="creative-heading"><div><h2>Creative performance</h2><p>ยอดที่จับคู่ได้จากข้อมูลออเดอร์ในช่วงวันที่เลือก · รูปจาก Meta Ads และ YouTube assets ผ่าน Supermetrics</p></div></div>
+            <div className="creative-heading"><div><h2>Creative performance</h2><p>{rule === "simple" ? "Paid Ticket ที่เกิดในช่วงแอดรัน แยกตาม ref ของลิงก์หน้าบ้านและ CTA แอด" : "ยอดที่จับคู่ได้จากข้อมูลออเดอร์ด้วย ref หรือ Pixel · รูปจาก Meta Ads และ YouTube assets ผ่าน Supermetrics"}</p></div></div>
             <div className="creative-grid">
               {view.creatives.map(c => <article className="creative-card" key={c.name}>
                 <div className="creative-image">
@@ -312,8 +326,8 @@ export default function Dashboard({ edition }) {
                 </div>
                 <div className="creative-body">
                   <h3>{c.name}</h3>
-                  <p className="creative-total"><b>{num(c.t)}</b> ยอดที่จับคู่ได้ · {baht(c.v)}</p>
-                  <p className="creative-breakdown">Ref Ad {num(c.refAd)} · Ref Org from Ad {num(c.org)} · Direct (Pixel) {num(c.direct)}</p>
+                  <p className="creative-total"><b>{num(c.t)}</b> {rule === "simple" ? "ยอดช่วงแอดรัน" : "ยอดที่จับคู่ได้"} · {baht(c.v)}</p>
+                  <p className="creative-breakdown">{rule === "simple" ? `มี ref ${num(c.linked)} · ไม่มี ref ${num(c.noRef)}` : `Ref Ad ${num(c.refAd)} · Ref Org from Ad ${num(c.org)} · Direct (Pixel) ${num(c.direct)}`}</p>
                   <div className="creative-range"><span>SELECTED RANGE</span><b>{num(c.t)}</b><small>{range[0]} – {range[1]}</small></div>
                 </div>
               </article>)}
