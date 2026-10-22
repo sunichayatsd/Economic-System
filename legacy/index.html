@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event Ad Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div>
+      <input id="eventName" class="event-name" value="Economic Forum 2026" aria-label="ชื่องาน">
+      <p class="sub">ยอดขายบัตร เทียบกับช่วงเวลาที่แอดรัน — กติกาง่าย: ขายตอนแอดรัน = นับเป็นยอดช่วงที่มีแอด</p>
+    </div>
+    <div class="range">
+      <label>ตั้งแต่ <input type="date" id="from"></label>
+      <label>ถึง <input type="date" id="to"></label>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="inputs">
+    <div class="drop" id="zipDrop">
+      <b>1. ไฟล์ Zip Event</b>
+      <span>ลาก Excel ที่ export จาก Zipevent มาวาง หรือ <label class="link">เลือกไฟล์<input type="file" id="zipFile" accept=".xlsx,.xls,.csv" hidden></label></span>
+      <small id="zipStatus">ยังไม่ได้ใส่ไฟล์ · ไฟล์อ่านในเบราว์เซอร์นี้เท่านั้น ไม่ถูกส่งขึ้นเซิร์ฟเวอร์</small>
+    </div>
+    <div class="drop" id="adDrop">
+      <b>2. ช่วงเวลาที่แอดรัน</b>
+      <span>ลากไฟล์ export จาก Ads Manager (breakdown <i>Time of day</i>) มาวาง หรือ <label class="link">เลือกไฟล์<input type="file" id="adFile" accept=".xlsx,.xls,.csv" multiple hidden></label> หรือแก้ช่วงเวลาเอง ↓</span>
+      <details>
+        <summary id="windowSummary">ช่วงเวลาแอดรัน</summary>
+        <textarea id="windows" rows="5" spellcheck="false"></textarea>
+        <small>1 บรรทัด = 1 ช่วง · รูปแบบ <code>YYYY-MM-DD HH:00 → YYYY-MM-DD HH:00</code> (รวมชั่วโมงท้าย)</small>
+      </details>
+    </div>
+  </section>
+
+  <section id="empty" class="empty">ใส่ไฟล์ Zip Event เพื่อเริ่ม</section>
+
+  <section id="report" hidden>
+    <div class="kpis">
+      <div class="kpi"><span>ยอดขาย (Paid)</span><b id="kTickets">—</b><small id="kRevenue">—</small></div>
+      <div class="kpi hl"><span>ขายช่วงที่แอดรัน</span><b id="kAd">—</b><small id="kAdSub">—</small></div>
+      <div class="kpi"><span>ขายตอนแอดไม่รัน</span><b id="kNoAd">—</b><small id="kNoAdSub">—</small></div>
+      <div class="kpi"><span>คลิกลิงก์แอดจริง (ref <code>ad-</code>)</span><b id="kRef">—</b><small id="kRefSub">—</small></div>
+    </div>
+
+    <div class="card">
+      <h2>ยอดขายรายวัน</h2>
+      <div class="legend"><span><i class="sw ad"></i>ขายช่วงแอดรัน</span><span><i class="sw no"></i>แอดไม่รัน</span></div>
+      <div class="chart"><canvas id="daily"></canvas></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>แยกตามชนิดบัตร</h2>
+        <div class="tbl"><table id="byType"></table></div>
+      </div>
+      <div class="card">
+        <h2>Ref code ที่มากับออเดอร์</h2>
+        <div class="tbl"><table id="byRef"></table></div>
+      </div>
+    </div>
+
+    <div class="card note">
+      <h2>อ่านตัวเลขนี้ยังไง</h2>
+      <p><b>"ขายช่วงที่แอดรัน" ไม่เท่ากับ "ยอดที่แอดสร้าง"</b> — นับทุกออเดอร์ที่จ่ายเงินในชั่วโมงที่แอดมี impression
+        จึงรวมคนที่ตั้งใจซื้ออยู่แล้วด้วย ถ้าแอดรันเกือบตลอด ตัวเลขนี้จะใกล้ยอดขายทั้งหมด ใช้เป็น "เพดาน" คู่กับตัวเลขที่พิสูจน์ได้
+        (ref code <code>ad-</code>) ซึ่งเป็น "พื้น"</p>
+      <p id="freeNote"></p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

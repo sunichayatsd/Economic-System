@@ -1,0 +1,331 @@
+"use client";
+// The Zip export is parsed here in the browser: names, emails and phone numbers never leave the page.
+// Only Meta ad data comes from the server (/api/ads → Supermetrics).
+import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
+import { Bar } from "react-chartjs-2";
+import { attribute, capacityOk, creativeFromAdName, creativeForRef } from "@/lib/engine";
+
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+
+const num = n => Math.round(n).toLocaleString("en-US");
+const baht = n => "฿" + num(n);
+const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "—");
+const pad = n => String(n).padStart(2, "0");
+const SIMPLE_TIERS = [
+  { key: "ขายช่วงแอดรัน", color: "#2a62d6" },
+  { key: "แอดไม่รัน", color: "#d6d4cc" },
+];
+const TIERS = [
+  { key: "Ref Ad", color: "#2a62d6", note: "คลิกลิงก์แอด / สแกน QR" },
+  { key: "Ref Org from Ad", color: "#58a0f0", note: "ลิงก์ออร์แกนิก + Ad ID จาก Meta" },
+  { key: "Direct Ads", color: "#9cc6f7", note: "ไม่มี ref + Ad ID จาก Meta" },
+  { key: "ไม่ได้มาจากแอด", color: "#d6d4cc", note: "Organic / Direct Organic" },
+];
+
+function expandWindows(windows = []) {
+  const set = new Set();
+  for (const [a, b] of windows) {
+    for (let t = new Date(a.replace(" ", "T") + ":00:00Z"); t <= new Date(b.replace(" ", "T") + ":00:00Z"); t = new Date(+t + 3600e3))
+      set.add(t.toISOString().slice(0, 10) + " " + t.toISOString().slice(11, 13));
+  }
+  return set;
+}
+
+// Ads Manager export with the "Time of day (ad account time zone)" breakdown → hours with impressions
+function parseAdsExport(buf) {
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+  const hdr = rows[0].map(h => String(h).trim().toLowerCase());
+  const find = (...ns) => { for (const n of ns) { const i = hdr.findIndex(h => h === n || h.includes(n)); if (i >= 0) return i; } return -1; };
+  const cd = find("day", "date", "reporting starts"), ct = find("time of day"), ci = find("impressions");
+  if (cd < 0 || ct < 0 || ci < 0) throw new Error("ไฟล์แอดต้องมีคอลัมน์ Day, Time of day และ Impressions");
+  const set = new Set();
+  for (const r of rows.slice(1)) {
+    if (!(parseFloat(String(r[ci]).replace(/,/g, "")) > 0)) continue;
+    const s = String(r[cd]); const m = s.match(/(\d{4})-(\d{2})-(\d{2})/) || s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!m) continue;
+    const day = m[1].length === 4 ? `${m[1]}-${m[2]}-${m[3]}` : `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+    set.add(day + " " + String(r[ct]).trim().slice(0, 2));
+  }
+  return set;
+}
+
+function parseZip(buf) {
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+  const hdr = rows[0].map(h => String(h).trim().toLowerCase());
+  const col = (...names) => { for (const n of names) { const i = hdr.indexOf(n.toLowerCase()); if (i >= 0) return i; } return -1; };
+  const c = { oid: col("order id"), done: col("completed date"), type: col("order type"), tkt: col("ticket type"),
+              price: col("price (after discount)", "price"), ref: col("ref code") };
+  const miss = Object.entries(c).filter(([, i]) => i < 0).map(([k]) => k);
+  if (miss.length) throw new Error("ไม่พบคอลัมน์ " + miss.join(", ") + " — ใช่ไฟล์ export จาก Zipevent ไหม");
+  return rows.slice(1).filter(r => r[c.oid]).map(r => {
+    const m = String(r[c.done]).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2})/);
+    if (!m) return null;
+    return { oid: String(r[c.oid]).trim(), day: `${m[3]}-${pad(m[2])}-${pad(m[1])}`, hour: pad(m[4]),
+             paid: String(r[c.type]).trim().toLowerCase() === "paid", type: String(r[c.tkt]).trim() || "(ไม่ระบุ)",
+             price: parseFloat(String(r[c.price]).replace(/,/g, "")) || 0, ref: String(r[c.ref] ?? "").trim() };
+  }).filter(Boolean);
+}
+
+export default function Dashboard({ edition }) {
+  const [tickets, setTickets] = useState(null);
+  const [fileInfo, setFileInfo] = useState("");
+  const [ads, setAds] = useState(null);
+  const [adsErr, setAdsErr] = useState("");
+  const [err, setErr] = useState("");
+  const [range, setRange] = useState(["", ""]);
+  const [over, setOver] = useState(false);
+  const [rule, setRule] = useState("simple");
+  const [uploadedHours, setUploadedHours] = useState(null);
+  const [saveNote, setSaveNote] = useState("");
+  const [snaps, setSnaps] = useState([]);
+  const [snapLabel, setSnapLabel] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  // last upload and saved snapshots come back from the database, so the page survives a reload
+  useEffect(() => {
+    fetch(`/api/uploads?slug=${edition.slug}`).then(r => r.json()).then(d => {
+      if (!d.storage) { setSaveNote("ยังไม่ได้เชื่อมฐานข้อมูล — ปิดหน้าแล้วต้องอัปโหลดใหม่"); return; }
+      if (d.upload && !tickets) {
+        const t = d.upload.tickets;
+        setTickets(t); setRange([d.upload.first_day, d.upload.last_day]);
+        setFileInfo(`ไฟล์ล่าสุดที่บันทึกไว้: ${d.upload.file_name} · ${num(d.upload.row_count)} แถว · อัปโหลด ${new Date(d.upload.uploaded_at).toLocaleString("th-TH")}`);
+      }
+    }).catch(() => {});
+    loadSnaps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edition.slug]);
+
+  function loadSnaps() {
+    fetch(`/api/snapshots?slug=${edition.slug}`).then(r => r.json()).then(d => setSnaps(d.snapshots || [])).catch(() => {});
+  }
+
+  async function onFile(f) {
+    if (!f) return;
+    setErr("");
+    try {
+      const t = parseZip(await f.arrayBuffer());
+      const days = t.map(x => x.day).sort();
+      setTickets(t); setFileInfo(`${f.name} · ${num(t.length)} แถว · ${days[0]} ถึง ${days.at(-1)}`);
+      setRange([days[0], days.at(-1)]);
+      fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: edition.slug, fileName: f.name, tickets: t }) })
+        .then(r => r.json()).then(d => setSaveNote(d.storage ? "บันทึกไฟล์นี้ไว้แล้ว (เฉพาะเลขออเดอร์ เวลา ราคา ชนิดบัตร ref — ไม่เก็บชื่อ/อีเมล/เบอร์)" : "ยังไม่ได้เชื่อมฐานข้อมูล — ปิดหน้าแล้วต้องอัปโหลดใหม่"))
+        .catch(() => setSaveNote("บันทึกไม่สำเร็จ"));
+    } catch (e) { setErr(e.message); }
+  }
+
+  function loadAds(refresh) {
+    setAdsErr(""); if (refresh) setRefreshing(true);
+    return fetch(`/api/ads?slug=${edition.slug}${refresh ? "&refresh=1" : ""}`).then(r => r.json())
+      .then(d => (d.error ? setAdsErr(d.error) : setAds(d))).catch(e => setAdsErr(e.message)).finally(() => setRefreshing(false));
+  }
+  useEffect(() => { if (tickets && !ads) loadAds(false); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets, edition.slug]);
+
+  const view = useMemo(() => {
+    if (!tickets) return null;
+    const [from, to] = range;
+    const result = attribute(tickets, ads?.purchases || [], edition, { end: to });
+    const inR = result.filter(o => o.day >= from && o.day <= to);
+    const free = tickets.filter(t => !t.paid && t.day >= from && t.day <= to).length;
+    const sumT = a => a.reduce((s, o) => s + o.t, 0), sumV = a => a.reduce((s, o) => s + o.v, 0);
+    const strict = inR.filter(o => o.tracked);
+    const adHours = ads?.adHours?.length ? new Set(ads.adHours) : uploadedHours || expandWindows(edition.adWindows);
+    const during = inR.filter(o => adHours.has(o.day + " " + o.hour));
+    const tracked = rule === "simple" ? during : strict;
+    const tierOf = rule === "simple" ? (o => (adHours.has(o.day + " " + o.hour) ? "ขายช่วงแอดรัน" : "แอดไม่รัน"))
+                                     : (o => (o.tracked ? o.label : "ไม่ได้มาจากแอด"));
+    const refAd = inR.filter(o => o.label === "Ref Ad");
+    const byRef = {};
+    for (const o of during) {
+      const k = o.ref ? (edition.adRefCodes || {})[o.ref] || creativeForRef(o.ref, edition) || o.ref : "(ไม่มี ref code)";
+      const r = (byRef[k] ||= { name: k, t: 0, v: 0, ad: 0 }); r.t += o.t; r.v += o.v; if (o.label === "Ref Ad") r.ad += o.t;
+    }
+    const spendIn = (ads?.spend || []).filter(s => s.day >= from && s.day <= to);
+    const spend = spendIn.reduce((a, s) => a + s.cost, 0);
+
+    const days = [];
+    for (let d = new Date(from + "T00:00:00Z"); d.toISOString().slice(0, 10) <= to; d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
+
+    const byCreative = {};
+    for (const o of strict) {
+      const c = (byCreative[o.creative] ||= { name: o.creative, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, spend: 0 });
+      c.t += o.t; c.v += o.v; if (o.kind === "View") c.view += o.t;
+      if (o.label === "Ref Ad") c.refAd += o.t; else if (o.label === "Direct Ads") c.direct += o.t; else c.org += o.t;
+    }
+    for (const s of spendIn) {
+      const name = creativeFromAdName(s.adName);
+      const k = Object.keys(byCreative).find(k => k.toLowerCase().replace(/\s/g, "") === name.toLowerCase().replace(/\s/g, "")) || name;
+      (byCreative[k] ||= { name: k, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, spend: 0 }).spend += s.cost;
+    }
+
+    const byType = {};
+    for (const o of inR) for (const [ty, n] of Object.entries(o.types)) {
+      const r = (byType[ty] ||= { name: ty, t: 0, ad: 0 }); r.t += n; if (o.tracked) r.ad += n;
+    }
+    const unmapped = [...new Set(strict.filter(o => o.creative.startsWith("ยังไม่ได้จับคู่")).map(o => o.ref))];
+
+    return {
+      result, inR, free, tracked, strict, refAd, sumT, sumV, during, spend, days, tierOf, adHours,
+      refs: Object.values(byRef).sort((a, b) => b.t - a.t),
+      creatives: Object.values(byCreative).sort((a, b) => b.t - a.t),
+      types: Object.values(byType).sort((a, b) => b.t - a.t),
+      unmapped, capacity: ads ? capacityOk(result, ads.purchases) : [],
+      hoursSource: ads?.adHours?.length ? "Supermetrics (สด)" : uploadedHours ? "ไฟล์ Ads Manager ที่อัปโหลด" : "ข้อมูลที่ตั้งไว้ใน Event",
+      metaPurch: (ads?.purchases || []).filter(p => p.day >= from && p.day <= to).reduce((a, p) => a + p.n, 0),
+    };
+  }, [tickets, ads, range, edition, rule, uploadedHours]);
+
+  function saveSnapshot() {
+    const metrics = {
+      sold: view.sumT(view.inR), revenue: view.sumV(view.inR), tracked: view.sumT(view.tracked), trackedRevenue: view.sumV(view.tracked),
+      strict: view.sumT(view.strict), view: view.sumT(view.strict.filter(o => o.kind === "View")), during: view.sumT(view.during),
+      refAd: view.sumT(view.refAd), spend: view.spend, creatives: view.creatives.map(c => ({ name: c.name, t: c.t, v: c.v })),
+    };
+    fetch("/api/snapshots", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: edition.slug, label: snapLabel, rule, from: range[0], to: range[1], metrics }) })
+      .then(r => r.json()).then(d => { if (d.error) setSaveNote(d.error); else { setSnapLabel(""); loadSnaps(); } });
+  }
+
+  async function onAdsFile(f) {
+    if (!f) return;
+    try { setUploadedHours(parseAdsExport(await f.arrayBuffer())); setErr(""); } catch (e) { setErr(e.message); }
+  }
+
+  function downloadLabels() {
+    const head = ["Order ID", "Completed date", "Hour", "Tickets", "Value", "Ref Code", "Ads", "Ad ID", "Meta Attribution", "Ad Name", "Creative"];
+    const lines = view.result.map(o => [o.oid, o.day, o.hour + ":00", o.t, o.v, o.ref, o.label, o.adId, o.kind || "", o.adName, o.creative || ""]);
+    const csv = "﻿" + [head, ...lines].map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `${edition.slug}-labels.csv`; a.click();
+  }
+
+  return (
+    <main className="wrap">
+      <section className={"drop" + (over ? " over" : "") + (tickets ? " ok" : "")}
+        onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
+        onDrop={e => { e.preventDefault(); setOver(false); onFile(e.dataTransfer.files[0]); }}>
+        <b>ไฟล์ Zip Event</b>
+        <span>ลาก Excel ที่ export จาก Zipevent มาวาง หรือ <label className="link">เลือกไฟล์<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onFile(e.target.files[0])} /></label></span>
+        <small className={err ? "err" : "muted"}>{err || fileInfo || "ไฟล์อ่านในเบราว์เซอร์นี้เท่านั้น ข้อมูลผู้ซื้อไม่ถูกส่งขึ้นเซิร์ฟเวอร์"}</small>
+        {saveNote && <small className="muted">{saveNote}</small>}
+        {tickets && <small className={adsErr ? "err" : "muted"}>{adsErr ? "⚠ " + adsErr : ads
+          ? <>ข้อมูล Meta: {ads.start} – {ads.end} · ดึงเมื่อ {new Date(ads.fetchedAt).toLocaleString("th-TH")}{ads.warning ? " · " + ads.warning : ""} ·{" "}
+              <button className="linkbtn" disabled={refreshing} onClick={() => loadAds(true)}>{refreshing ? "กำลังดึง… (~30 วินาที)" : "ดึงใหม่ตอนนี้"}</button></>
+          : "กำลังดึงข้อมูลแอดจาก Supermetrics… (~30 วินาที)"}</small>}
+      </section>
+
+      {view && (
+        <>
+          <div className="toolbar">
+            <label>ตั้งแต่ <input type="date" value={range[0]} onChange={e => setRange([e.target.value, range[1]])} /></label>
+            <label>ถึง <input type="date" value={range[1]} onChange={e => setRange([range[0], e.target.value])} /></label>
+            <div className="seg">
+              <button className={rule === "simple" ? "on" : ""} onClick={() => setRule("simple")}>กติกาง่าย: ขายตอนแอดรัน</button>
+              <button className={rule === "strict" ? "on" : ""} onClick={() => setRule("strict")} disabled={!ads}>กติกาเข้ม: ต้องมี Ad ID</button>
+            </div>
+            <button className="ghost" onClick={downloadLabels} disabled={!ads}>ดาวน์โหลดป้ายสำหรับ Lark (CSV)</button>
+          </div>
+
+          <h2 className="h">Overall</h2>
+          <div className="kpis">
+            <Kpi label="ยอดขาย (Paid)" big={num(view.sumT(view.inR))} sub={`${baht(view.sumV(view.inR))} · ไม่นับบัตรฟรี ${num(view.free)} ใบ`} />
+            <Kpi hl label={rule === "simple" ? "Ad-tracked (ขายตอนแอดรัน)" : "Ad-tracked (มี Ad ID)"} big={num(view.sumT(view.tracked))} sub={`${pct(view.sumT(view.tracked), view.sumT(view.inR))} ของยอดขาย · ${baht(view.sumV(view.tracked))}`} />
+            {rule === "simple"
+              ? <Kpi label="ขายตอนแอดไม่รัน" big={num(view.sumT(view.inR) - view.sumT(view.during))} sub={`${baht(view.sumV(view.inR) - view.sumV(view.during))}`} />
+              : <Kpi label="คลิก/สแกนจริง · แค่เห็นแอด" big={`${num(view.sumT(view.tracked.filter(o => o.kind !== "View")))} · ${num(view.sumT(view.tracked.filter(o => o.kind === "View")))}`} sub="เห็น = Meta 1-day view ไม่ได้คลิก" />}
+            <Kpi label="ค่าแอด Meta · ROAS" big={ads ? baht(view.spend) : "—"} sub={ads && view.spend ? `ROAS ${(view.sumV(view.tracked) / view.spend).toFixed(2)}x · ${baht(view.spend / Math.max(1, view.sumT(view.tracked)))}/ใบ` : "ไม่รวม Google Ads"} />
+            <Kpi label="คลิกลิงก์แอดจริง (ref ad-)" big={num(view.sumT(view.refAd))} sub={`ขั้นต่ำที่พิสูจน์ได้ · ${baht(view.sumV(view.refAd))}`} />
+          </div>
+
+          <div className="card">
+            <h2>Ad-tracked รายวัน</h2>
+            {rule === "simple" && <p className="muted small">ช่วงเวลาแอดรันจาก{view.hoursSource} · {num(view.adHours.size)} ชั่วโมง ·{" "}
+              <label className="link">อัปโหลดไฟล์ Ads Manager (breakdown Time of day)<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onAdsFile(e.target.files[0])} /></label></p>}
+            <div className="legend">{(rule === "simple" ? SIMPLE_TIERS : TIERS).map(t => <span key={t.key} title={t.note}><i style={{ background: t.color }} />{t.key}</span>)}</div>
+            <div className="chart">
+              <Bar options={{ maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
+                scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 } } } }}
+                data={{ labels: view.days.map(d => d.slice(8) + "/" + d.slice(5, 7)),
+                  datasets: (rule === "simple" ? SIMPLE_TIERS : TIERS).map(t => ({ label: t.key, backgroundColor: t.color, borderRadius: 2,
+                    data: view.days.map(d => view.sumT(view.inR.filter(o => o.day === d && view.tierOf(o) === t.key))) })) }} />
+            </div>
+          </div>
+
+          {rule === "simple" && (
+            <div className="card">
+              <h2>ยอดช่วงแอดรัน แยกตามที่มา (ref code)</h2>
+              <p className="muted small">กติกาง่ายบอกไม่ได้ว่าแอดชิ้นไหนทำยอด เพราะหลายชิ้นรันพร้อมกัน ตารางนี้จึงแยกตาม ref code ที่ติดมากับออเดอร์</p>
+              <div className="tbl"><table>
+                <thead><tr><th>ที่มา</th><th>ขายช่วงแอดรัน</th><th>ในนี้คลิกลิงก์แอด</th><th>ยอดเงิน</th></tr></thead>
+                <tbody>
+                  {view.refs.map(r => <tr key={r.name}><td>{r.name}</td><td>{num(r.t)}</td><td>{num(r.ad)}</td><td>{baht(r.v)}</td></tr>)}
+                  <tr className="tot"><td>รวม</td><td>{num(view.sumT(view.during))}</td><td>{num(view.refs.reduce((a, r) => a + r.ad, 0))}</td><td>{baht(view.sumV(view.during))}</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          )}
+          {rule === "strict" && <div className="card">
+            <h2>แยกตามชิ้นงาน</h2>
+            <div className="tbl"><table>
+              <thead><tr><th>ชิ้นงาน</th><th>Ref Ad</th><th>Ref Org from Ad</th><th>Direct Ads</th><th>Ad-tracked</th><th>แค่เห็นแอด</th><th>ยอดเงิน</th><th>ค่าแอด</th><th>ต่อใบ</th></tr></thead>
+              <tbody>
+                {view.creatives.map(c => (
+                  <tr key={c.name}><td>{c.name}</td><td>{c.refAd}</td><td>{c.org}</td><td>{c.direct}</td><td><b>{c.t}</b></td><td>{c.view}</td>
+                    <td>{baht(c.v)}</td><td>{c.spend ? baht(c.spend) : "—"}</td><td>{c.spend && c.t ? baht(c.spend / c.t) : "—"}</td></tr>
+                ))}
+                <tr className="tot"><td>รวม</td>
+                  {["refAd", "org", "direct", "t", "view"].map(k => <td key={k}>{num(view.creatives.reduce((a, c) => a + c[k], 0))}</td>)}
+                  <td>{baht(view.creatives.reduce((a, c) => a + c.v, 0))}</td><td>{ads ? baht(view.spend) : "—"}</td><td></td></tr>
+              </tbody>
+            </table></div>
+            {view.unmapped.length > 0 && <p className="warn">ref code ของแอดที่ยังไม่รู้ว่าเป็นชิ้นงานไหน: {view.unmapped.map(r => <code key={r}>{r}</code>)} — เพิ่มใน <code>refCreative</code> ของ Event นี้</p>}
+          </div>}
+
+          <div className="grid2">
+            <div className="card">
+              <h2>แยกตามชนิดบัตร</h2>
+              <div className="tbl"><table>
+                <thead><tr><th>บัตร</th><th>ขาย</th><th>Ad-tracked</th><th>%</th></tr></thead>
+                <tbody>{view.types.map(t => <tr key={t.name}><td>{t.name}</td><td>{num(t.t)}</td><td>{num(t.ad)}</td><td>{pct(t.ad, t.t)}</td></tr>)}</tbody>
+              </table></div>
+            </div>
+            <div className="card">
+              <h2>ตรวจความถูกต้อง</h2>
+              <ul className="checks">
+                <li className={view.capacity.length ? "bad" : "good"}>{view.capacity.length ? `มี ${view.capacity.length} ชั่วโมงที่นับเกินจำนวน Purchase ของ Meta` : "ไม่มี Purchase ไหนถูกนับให้ 2 ออเดอร์"}</li>
+                <li className={view.unmapped.length ? "bad" : "good"}>{view.unmapped.length ? `ref code แอดที่ยังไม่จับคู่ ${view.unmapped.length} โค้ด` : "ref code แอดทุกตัวจับคู่ชิ้นงานได้"}</li>
+                <li>Meta รายงาน Purchase ในช่วงนี้ {num(view.metaPurch)} ครั้ง · จับคู่เป็นออเดอร์ได้ {num(view.strict.filter(o => o.adId).length)} ออเดอร์</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>บันทึกตัวเลขแต่ละรอบ</h2>
+            <p className="muted small">กดบันทึกก่อนพรีเซ็นต์ ตัวเลขรอบนั้นจะถูกเก็บไว้ย้อนดูได้ แม้ข้อมูลจะอัปเดตทีหลัง</p>
+            <div className="toolbar" style={{ marginTop: 0 }}>
+              <input className="text" placeholder="ชื่อรอบ เช่น พรีเซ็นต์ลูกค้า 23 ต.ค." value={snapLabel} onChange={e => setSnapLabel(e.target.value)} />
+              <button className="primary" onClick={saveSnapshot}>บันทึกตัวเลขรอบนี้</button>
+            </div>
+            {snaps.length > 0 && <div className="tbl"><table>
+              <thead><tr><th>บันทึกเมื่อ</th><th>ชื่อรอบ</th><th>กติกา</th><th>ช่วงวันที่</th><th>ยอดขาย</th><th>Ad-tracked</th><th>มี Ad ID</th><th>ช่วงแอดรัน</th></tr></thead>
+              <tbody>{snaps.map(s => <tr key={s.id}>
+                <td>{new Date(s.taken_at).toLocaleString("th-TH")}</td><td>{s.label || "—"}</td><td>{s.rule === "simple" ? "ง่าย" : "เข้ม"}</td>
+                <td>{s.range_from} – {s.range_to}</td><td>{num(s.metrics.sold)}</td><td><b>{num(s.metrics.tracked)}</b></td>
+                <td>{num(s.metrics.strict)}</td><td>{num(s.metrics.during)}</td></tr>)}</tbody>
+            </table></div>}
+          </div>
+        </>
+      )}
+    </main>
+  );
+}
+
+function Kpi({ label, big, sub, hl }) {
+  return <div className={"kpi" + (hl ? " hl" : "")}><span>{label}</span><b>{big}</b><small>{sub}</small></div>;
+}
