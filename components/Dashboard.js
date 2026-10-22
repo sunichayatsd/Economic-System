@@ -349,7 +349,8 @@ export default function Dashboard({ edition }) {
                   }} /> : <span>ไม่มีภาพ Creative</span>}
                 </div>
                 <div className="creative-body">
-                  <div className="creative-title"><h3>{c.name}</h3>{c.platforms.map(platform => <PlatformBadge key={platform} platform={platform} />)}</div>
+                  <div className="creative-title"><h3>{c.name}</h3></div>
+                  {c.platforms.length > 0 && <div className="creative-platforms">{c.platforms.map(platform => <PlatformBadge key={platform} platform={platform} />)}</div>}
                   <p className="creative-total"><b>{num(c.t)}</b> {rule === "simple" ? "ยอดช่วงแอดรัน" : "ยอดที่จับคู่ได้"} · {baht(c.v)}</p>
                   <p className="creative-breakdown">{rule === "simple" ? `มี ref ${num(c.linked)} · ไม่มี ref ${num(c.noRef)}` : `Ref Ad ${num(c.refAd)} · Ref Org from Ad ${num(c.org)} · Direct (Pixel) ${num(c.direct)}`}</p>
                   <div className="creative-range"><span>SELECTED RANGE</span><b>{num(c.t)}</b><small>{range[0]} – {range[1]}</small></div>
