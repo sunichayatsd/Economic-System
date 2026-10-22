@@ -19,11 +19,13 @@ const sameCreative = (a, b) => {
   return left === right || left.startsWith(right) || right.startsWith(left);
 };
 const simpleCreativeFor = (order, edition) => {
-  if (!order.ref) return "ไม่มี ref / ไม่ระบุชิ้นงาน";
+  if (!order.ref) return "";
   const mapped = (edition.adRefCodes || {})[order.ref] || creativeForRef(order.ref, edition);
   if (mapped) return mapped;
-  if (/^website-/i.test(order.ref)) return "Website / ไม่ระบุชิ้นงาน";
-  return "ลิงก์อื่นๆ / ไม่ระบุชิ้นงาน";
+  // A CTA that is genuinely from an ad may be new and not yet named in
+  // refCreative. Count it, but never turn ordinary website/unknown links into
+  // ad-attributed sales merely because an ad happened to be running.
+  return /^ad-/i.test(order.ref) ? "CTA Ad / ยังไม่ระบุชิ้นงาน" : "";
 };
 const platformForRef = ref => {
   const value = String(ref || "").toLowerCase();
@@ -42,8 +44,8 @@ function PlatformBadge({ platform }) {
   return <span className={`platform-badge platform-${platform.toLowerCase().replace(/\s+/g, "-")}`} title={label} aria-label={label}>{icon}</span>;
 }
 const SIMPLE_TIERS = [
-  { key: "ขายช่วงแอดรัน", color: "#2a62d6" },
-  { key: "แอดไม่รัน", color: "#d6d4cc" },
+  { key: "CTA แอดในช่วงแอดรัน", color: "#2a62d6" },
+  { key: "ยอดอื่นๆ / ไม่เข้าเกณฑ์", color: "#d6d4cc" },
 ];
 const TIERS = [
   { key: "Ref Ad", color: "#2a62d6", note: "คลิกลิงก์แอด / สแกน QR" },
@@ -169,12 +171,14 @@ export default function Dashboard({ edition }) {
     const strict = inR.filter(o => o.tracked);
     const adHours = ads?.adHours?.length ? new Set(ads.adHours) : uploadedHours || expandWindows(edition.adWindows);
     const during = inR.filter(o => adHours.has(o.day + " " + o.hour));
-    const tracked = rule === "simple" ? during : strict;
-    const tierOf = rule === "simple" ? (o => (adHours.has(o.day + " " + o.hour) ? "ขายช่วงแอดรัน" : "แอดไม่รัน"))
+    const simpleTracked = during.filter(o => simpleCreativeFor(o, edition));
+    const simpleTrackedOids = new Set(simpleTracked.map(o => o.oid));
+    const tracked = rule === "simple" ? simpleTracked : strict;
+    const tierOf = rule === "simple" ? (o => (simpleTrackedOids.has(o.oid) ? "CTA แอดในช่วงแอดรัน" : "ยอดอื่นๆ / ไม่เข้าเกณฑ์"))
                                      : (o => (o.tracked ? o.label : "ไม่ได้มาจากแอด"));
     const refAd = inR.filter(o => o.label === "Ref Ad");
     const byRef = {};
-    for (const o of during) {
+    for (const o of simpleTracked) {
       const k = o.ref ? (edition.adRefCodes || {})[o.ref] || creativeForRef(o.ref, edition) || o.ref : "(ไม่มี ref code)";
       const r = (byRef[k] ||= { name: k, t: 0, v: 0, ad: 0 }); r.t += o.t; r.v += o.v; if (o.label === "Ref Ad") r.ad += o.t;
     }
@@ -191,7 +195,7 @@ export default function Dashboard({ edition }) {
     const addPlatform = (creative, platform) => {
       if (platform && !creative.platforms.includes(platform)) creative.platforms.push(platform);
     };
-    const creativeOrders = rule === "simple" ? during : strict;
+    const creativeOrders = rule === "simple" ? simpleTracked : strict;
     for (const o of creativeOrders) {
       const name = rule === "simple" ? simpleCreativeFor(o, edition) : o.creative;
       const c = (byCreative[name] ||= { name, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, linked: 0, noRef: 0, spend: 0, platforms: [] });
@@ -229,7 +233,7 @@ export default function Dashboard({ edition }) {
     const unmapped = [...new Set(strict.filter(o => o.creative.startsWith("ยังไม่ได้จับคู่")).map(o => o.ref))];
 
     return {
-      result, inR, free, tracked, strict, refAd, sumT, sumV, during, spend, metaSpend, spendByPlatform, days, tierOf, adHours,
+      result, inR, free, tracked, strict, refAd, sumT, sumV, during, simpleTracked, spend, metaSpend, spendByPlatform, days, tierOf, adHours,
       refs: Object.values(byRef).sort((a, b) => b.t - a.t),
       creatives: Object.values(byCreative).sort((a, b) => b.t - a.t),
       types: Object.values(byType).sort((a, b) => b.t - a.t),
@@ -242,7 +246,7 @@ export default function Dashboard({ edition }) {
   function saveSnapshot() {
     const metrics = {
       sold: view.sumT(view.inR), revenue: view.sumV(view.inR), tracked: view.sumT(view.tracked), trackedRevenue: view.sumV(view.tracked),
-      strict: view.sumT(view.strict), view: view.sumT(view.strict.filter(o => o.kind === "View")), during: view.sumT(view.during),
+      strict: view.sumT(view.strict), view: view.sumT(view.strict.filter(o => o.kind === "View")), during: view.sumT(view.tracked),
       refAd: view.sumT(view.refAd), spend: view.spend, creatives: view.creatives.map(c => ({ name: c.name, t: c.t, v: c.v })),
     };
     fetch("/api/snapshots", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -307,9 +311,9 @@ export default function Dashboard({ edition }) {
           <h2 className="h">Overall</h2>
           <div className="kpis">
             <Kpi label="ยอดขาย (Paid)" big={num(view.sumT(view.inR))} sub={`${baht(view.sumV(view.inR))} · ไม่นับบัตรฟรี ${num(view.free)} ใบ`} />
-            <Kpi hl label={rule === "simple" ? "Ad-tracked (ขายตอนแอดรัน)" : "Ad-tracked (มี Ad ID)"} big={num(view.sumT(view.tracked))} sub={`${pct(view.sumT(view.tracked), view.sumT(view.inR))} ของยอดขาย · ${baht(view.sumV(view.tracked))}`} />
+            <Kpi hl label={rule === "simple" ? "Ad-tracked (CTA ในช่วงแอดรัน)" : "Ad-tracked (มี Ad ID)"} big={num(view.sumT(view.tracked))} sub={`${pct(view.sumT(view.tracked), view.sumT(view.inR))} ของยอดขาย · ${baht(view.sumV(view.tracked))}`} />
             {rule === "simple"
-              ? <Kpi label="ขายตอนแอดไม่รัน" big={num(view.sumT(view.inR) - view.sumT(view.during))} sub={`${baht(view.sumV(view.inR) - view.sumV(view.during))}`} />
+              ? <Kpi label="ยอดอื่นๆ / ไม่เข้าเกณฑ์" big={num(view.sumT(view.inR) - view.sumT(view.tracked))} sub={`${baht(view.sumV(view.inR) - view.sumV(view.tracked))}`} />
               : <Kpi label="คลิก/สแกนจริง · แค่เห็นแอด" big={`${num(view.sumT(view.tracked.filter(o => o.kind !== "View")))} · ${num(view.sumT(view.tracked.filter(o => o.kind === "View")))}`} sub="เห็น = Meta 1-day view ไม่ได้คลิก" />}
             {edition.spendSources?.length ? (
               <Kpi label="ค่าแอดทุก Ads Manager · Cost per Ticket"
@@ -325,7 +329,7 @@ export default function Dashboard({ edition }) {
 
           <div className="card">
             <h2>Ad-tracked รายวัน</h2>
-            {rule === "simple" && <p className="muted small">ช่วงเวลาแอดรันจาก{view.hoursSource} · {num(view.adHours.size)} ชั่วโมง ·{" "}
+            {rule === "simple" && <p className="muted small">นับเมื่ออยู่ในช่วงแอดรันและมี ref CTA แอดที่ตั้งค่าไว้ · ช่วงเวลาแอดรันจาก{view.hoursSource} · {num(view.adHours.size)} ชั่วโมง ·{" "}
               <label className="link">อัปโหลดไฟล์ Ads Manager (breakdown Time of day)<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onAdsFile(e.target.files[0])} /></label></p>}
             <div className="legend">{(rule === "simple" ? SIMPLE_TIERS : TIERS).map(t => <span key={t.key} title={t.note}><i style={{ background: t.color }} />{t.key}</span>)}</div>
             <div className="chart">
@@ -338,7 +342,7 @@ export default function Dashboard({ edition }) {
           </div>
 
           {view.creatives.length > 0 && <section className="creative-section">
-            <div className="creative-heading"><div><h2>Creative performance</h2><p>{rule === "simple" ? "Paid Ticket ที่เกิดในช่วงแอดรัน แยกตาม ref ของลิงก์หน้าบ้านและ CTA แอด" : "ยอดที่จับคู่ได้จากข้อมูลออเดอร์ด้วย ref หรือ Pixel · รูปจาก Meta Ads และ YouTube assets ผ่าน Supermetrics"}</p></div></div>
+            <div className="creative-heading"><div><h2>Creative performance</h2><p>{rule === "simple" ? "Paid Ticket ที่อยู่ในช่วงแอดรัน และมี ref CTA แอดที่ผูกกับชิ้นงาน" : "ยอดที่จับคู่ได้จากข้อมูลออเดอร์ด้วย ref หรือ Pixel · รูปจาก Meta Ads และ YouTube assets ผ่าน Supermetrics"}</p></div></div>
             <div className="creative-grid">
               {view.creatives.map(c => <article className="creative-card" key={c.name}>
                 <div className="creative-image">
@@ -351,8 +355,8 @@ export default function Dashboard({ edition }) {
                 <div className="creative-body">
                   <div className="creative-title"><h3>{c.name}</h3></div>
                   {c.platforms.length > 0 && <div className="creative-platforms">{c.platforms.map(platform => <PlatformBadge key={platform} platform={platform} />)}</div>}
-                  <p className="creative-total"><b>{num(c.t)}</b> {rule === "simple" ? "ยอดช่วงแอดรัน" : "ยอดที่จับคู่ได้"} · {baht(c.v)}</p>
-                  <p className="creative-breakdown">{rule === "simple" ? `มี ref ${num(c.linked)} · ไม่มี ref ${num(c.noRef)}` : `Ref Ad ${num(c.refAd)} · Ref Org from Ad ${num(c.org)} · Direct (Pixel) ${num(c.direct)}`}</p>
+                  <p className="creative-total"><b>{num(c.t)}</b> {rule === "simple" ? "ยอดจาก CTA แอด" : "ยอดที่จับคู่ได้"} · {baht(c.v)}</p>
+                  <p className="creative-breakdown">{rule === "simple" ? `CTA/ref ที่ตั้งค่า ${num(c.linked)}` : `Ref Ad ${num(c.refAd)} · Ref Org from Ad ${num(c.org)} · Direct (Pixel) ${num(c.direct)}`}</p>
                   <div className="creative-range"><span>SELECTED RANGE</span><b>{num(c.t)}</b><small>{range[0]} – {range[1]}</small></div>
                 </div>
               </article>)}
@@ -362,13 +366,13 @@ export default function Dashboard({ edition }) {
 
           {rule === "simple" && (
             <div className="card">
-              <h2>ยอดช่วงแอดรัน แยกตามที่มา (ref code)</h2>
-              <p className="muted small">กติกาง่ายบอกไม่ได้ว่าแอดชิ้นไหนทำยอด เพราะหลายชิ้นรันพร้อมกัน ตารางนี้จึงแยกตาม ref code ที่ติดมากับออเดอร์</p>
+              <h2>ยอดจาก CTA แอด แยกตามที่มา (ref code)</h2>
+              <p className="muted small">นับเฉพาะ ref CTA ที่ตั้งค่าไว้และเกิดในช่วงแอดรัน ไม่รวม Website, ลิงก์อื่น หรือออเดอร์ไม่มี ref</p>
               <div className="tbl"><table>
-                <thead><tr><th>ที่มา</th><th>ขายช่วงแอดรัน</th><th>ในนี้คลิกลิงก์แอด</th><th>ยอดเงิน</th></tr></thead>
+                <thead><tr><th>ที่มา</th><th>ยอดจาก CTA แอด</th><th>ในนี้คลิกลิงก์แอด</th><th>ยอดเงิน</th></tr></thead>
                 <tbody>
                   {view.refs.map(r => <tr key={r.name}><td>{r.name}</td><td>{num(r.t)}</td><td>{num(r.ad)}</td><td>{baht(r.v)}</td></tr>)}
-                  <tr className="tot"><td>รวม</td><td>{num(view.sumT(view.during))}</td><td>{num(view.refs.reduce((a, r) => a + r.ad, 0))}</td><td>{baht(view.sumV(view.during))}</td></tr>
+                  <tr className="tot"><td>รวม</td><td>{num(view.sumT(view.simpleTracked))}</td><td>{num(view.refs.reduce((a, r) => a + r.ad, 0))}</td><td>{baht(view.sumV(view.simpleTracked))}</td></tr>
                 </tbody>
               </table></div>
             </div>
