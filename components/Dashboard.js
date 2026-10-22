@@ -36,9 +36,9 @@ const platformForRef = ref => {
 function PlatformBadge({ platform }) {
   const label = platform === "Google Ads" ? "Google Ads" : platform;
   const icon = platform === "YouTube" ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4" fill="#ff0033"/><path d="m10 9 5 3-5 3Z" fill="white"/></svg>
-    : platform === "Google Ads" ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 7.5 13a3.5 3.5 0 1 1-6 3.5L3 8.5A3.5 3.5 0 0 1 9 5Z" fill="#4285f4"/><path d="m15.5 4.8 5.4 9.4a3.5 3.5 0 0 1-6 3.5L9.5 8.3Z" fill="#34a853"/><circle cx="6.5" cy="18" r="3" fill="#fbbc04"/></svg>
+    : platform === "Google Ads" ? <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12.6 4.1a4 4 0 0 1 5.5 1.5l10 17.3a4 4 0 1 1-6.9 4L11.2 9.6a4 4 0 0 1 1.4-5.5Z" fill="#4285f4"/><path d="m19.4 13.3 4.8-8.1a4 4 0 1 1 6.9 4l-7 12.1Z" fill="#34a853"/><circle cx="8.4" cy="24.1" r="4.1" fill="#fbbc04"/></svg>
     : platform === "TikTok" ? <span className="platform-note">♪</span>
-    : <span className="platform-meta">∞</span>;
+    : <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="4" fill="#1877f2"/><path d="M14.2 20v-7h2.4l.4-2.8h-2.8V8.4c0-.8.2-1.4 1.4-1.4H17V4.5a19 19 0 0 0-2-.1c-2.1 0-3.5 1.3-3.5 3.6v2.2H9v2.8h2.5v7Z" fill="white"/></svg>;
   return <span className={`platform-badge platform-${platform.toLowerCase().replace(/\s+/g, "-")}`} title={label} aria-label={label}>{icon}</span>;
 }
 const SIMPLE_TIERS = [
