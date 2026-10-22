@@ -298,15 +298,15 @@ export default function Dashboard({ edition }) {
               ? <Kpi label="Revenue รวม" big={baht(view.sumV(view.inR))} sub={`Paid Ticket ${num(view.sumT(view.inR))} ใบ · ไม่นับบัตรฟรี ${num(view.free)} ใบ`} />
               : <Kpi label="คลิก/สแกนจริง · แค่เห็นแอด" big={`${num(view.sumT(view.tracked.filter(o => o.kind !== "View")))} · ${num(view.sumT(view.tracked.filter(o => o.kind === "View")))}`} sub="เห็น = Meta 1-day view ไม่ได้คลิก" />}
             {edition.spendSources?.length ? (
-              <Kpi label="ค่าแอดทุก Ads Manager · Cost per Ticket"
+              <Kpi label="ค่าแอดรวมทุก Ads Manager"
                 big={ads?.spendComplete ? baht(view.spend) : "—"}
                 sub={ads?.spendComplete
-                  ? `${baht(view.spend / Math.max(1, view.sumT(view.inR)))}/Paid Ticket · ${num(view.sumT(view.inR))} ใบ · ${Object.entries(view.spendByPlatform).map(([p, v]) => `${p} ${baht(v)}`).join(" · ")}`
+                  ? Object.entries(view.spendByPlatform).map(([p, v]) => `${p} ${baht(v)}`).join(" · ")
                   : ads ? "รอข้อมูลค่าแอดให้ครบทุกแพลตฟอร์มก่อนคำนวณ" : "กำลังดึงค่าแอดทุกแพลตฟอร์ม"} />
             ) : (
-              <Kpi label="ค่าแอด Meta · ROAS" big={ads ? baht(view.spend) : "—"} sub={ads && view.spend ? `ROAS ${(view.sumV(view.tracked) / view.spend).toFixed(2)}x · ${baht(view.spend / Math.max(1, view.sumT(view.tracked)))}/ใบ` : ""} />
+              <Kpi label="ค่าแอดรวม Meta" big={ads ? baht(view.spend) : "—"} sub="" />
             )}
-            <Kpi label="คลิกลิงก์แอดจริง (ref ad-)" big={num(view.sumT(view.refAd))} sub={`ขั้นต่ำที่พิสูจน์ได้ · ${baht(view.sumV(view.refAd))}`} />
+            <Kpi label="Cost Per Ticket" big={ads?.spendComplete ? baht(view.spend / Math.max(1, view.sumT(view.inR))) : "—"} sub={ads?.spendComplete ? `ค่าแอดรวม ÷ Paid Ticket ${num(view.sumT(view.inR))} ใบ` : "รอข้อมูลค่าแอดให้ครบทุกแพลตฟอร์มก่อนคำนวณ"} />
           </div>
 
           <div className="card">
