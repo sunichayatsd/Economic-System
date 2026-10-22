@@ -178,7 +178,10 @@ export default function Dashboard({ edition }) {
     for (const media of ads?.creativeMedia || []) {
       const name = creativeFromAdName(media.adName);
       const k = Object.keys(byCreative).sort((a, b) => b.length - a.length).find(k => sameCreative(k, name));
-      if (k && !byCreative[k].imageUrl) byCreative[k].imageUrl = media.imageUrl;
+      if (k && !byCreative[k].imageUrl) {
+        byCreative[k].imageUrl = media.imageUrl;
+        byCreative[k].fallbackImageUrl = media.fallbackImageUrl || "";
+      }
     }
 
     const byType = {};
@@ -297,11 +300,15 @@ export default function Dashboard({ edition }) {
           </div>
 
           {view.creatives.length > 0 && <section className="creative-section">
-            <div className="creative-heading"><div><h2>Creative performance</h2><p>ยอดที่จับคู่ได้จากข้อมูลออเดอร์ในช่วงวันที่เลือก · รูปจาก Meta Ads ผ่าน Supermetrics</p></div></div>
+            <div className="creative-heading"><div><h2>Creative performance</h2><p>ยอดที่จับคู่ได้จากข้อมูลออเดอร์ในช่วงวันที่เลือก · รูปจาก Meta Ads และ YouTube assets ผ่าน Supermetrics</p></div></div>
             <div className="creative-grid">
               {view.creatives.map(c => <article className="creative-card" key={c.name}>
                 <div className="creative-image">
-                  {c.imageUrl ? <img src={c.imageUrl} alt={c.name} referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = "none"; }} /> : <span>ไม่มีภาพ Creative</span>}
+                  {c.imageUrl ? <img src={c.imageUrl} data-fallback={c.fallbackImageUrl} alt={c.name} referrerPolicy="no-referrer" onError={e => {
+                    const fallback = e.currentTarget.dataset.fallback;
+                    if (fallback && e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                    else e.currentTarget.style.display = "none";
+                  }} /> : <span>ไม่มีภาพ Creative</span>}
                 </div>
                 <div className="creative-body">
                   <h3>{c.name}</h3>
