@@ -29,7 +29,6 @@ button{font:inherit;cursor:pointer;border-radius:8px;padding:8px 14px}
 .sync-card.zip-sync.over,.sync-card.zip-sync.ok{border-color:var(--accent)} .sync-card.zip-sync.ok{border-style:solid}
 .sync-card h2{font-size:18px;margin:0}.sync-card p{margin:0;min-height:46px;color:var(--muted)}
 .sync-card small{margin-top:auto}.sync-kicker{color:var(--accent);font-size:12px;font-weight:600;letter-spacing:.03em}
-.upload-action{display:inline-flex;align-items:center}
 .link{color:var(--accent);cursor:pointer;text-decoration:underline}
 .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}
 .toolbar label{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}

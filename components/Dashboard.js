@@ -1,7 +1,7 @@
 "use client";
 // The Zip export is parsed here in the browser: names, emails and phone numbers never leave the page.
 // Only Meta ad data comes from the server (/api/ads → Supermetrics).
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 import { Bar } from "react-chartjs-2";
@@ -71,6 +71,7 @@ function parseZip(buf) {
 }
 
 export default function Dashboard({ edition }) {
+  const zipInput = useRef(null);
   const [tickets, setTickets] = useState(null);
   const [fileInfo, setFileInfo] = useState("");
   const [ads, setAds] = useState(null);
@@ -221,7 +222,8 @@ export default function Dashboard({ edition }) {
           <span className="sync-kicker">1 · ยอดขายบัตร</span>
           <h2>อัปเดตไฟล์ Zipevent</h2>
           <p>อัปโหลด Excel ล่าสุดจาก Zipevent เพื่ออัปเดตยอด Paid Ticket และรายได้</p>
-          <label className="primary upload-action">เลือกไฟล์ Zipevent<input type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onFile(e.target.files[0])} /></label>
+          <button type="button" className="primary" onClick={() => zipInput.current?.click()}>เลือกไฟล์ Zipevent</button>
+          <input ref={zipInput} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => onFile(e.target.files[0])} />
           <small className={err ? "err" : "muted"}>{err || fileInfo || "ข้อมูลที่บันทึกไว้จะกลับมาอัตโนมัติหลัง refresh"}</small>
           {saveNote && <small className="muted">{saveNote}</small>}
         </div>
