@@ -2,6 +2,7 @@
 // The Zip export is parsed here in the browser: names, emails and phone numbers never leave the page.
 // Only Meta ad data comes from the server (/api/ads → Supermetrics).
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import * as XLSX from "xlsx";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 import { Bar } from "react-chartjs-2";
@@ -288,6 +289,7 @@ export default function Dashboard({ edition }) {
               <button className={rule === "strict" ? "on" : ""} onClick={() => setRule("strict")} disabled={!ads}>กติกาเข้ม: ต้องมี Ad ID</button>
             </div>
             <button className="ghost" onClick={downloadLabels} disabled={!ads}>ดาวน์โหลดป้ายสำหรับ Lark (CSV)</button>
+            <Link className="ghost pivot-link" href={`/event/${edition.slug}/pivot`}>ตารางวิเคราะห์ (ทดลอง)</Link>
           </div>
 
           <h2 className="h">Overall</h2>
