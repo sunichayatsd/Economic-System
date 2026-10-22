@@ -25,6 +25,22 @@ const simpleCreativeFor = (order, edition) => {
   if (/^website-/i.test(order.ref)) return "Website / ไม่ระบุชิ้นงาน";
   return "ลิงก์อื่นๆ / ไม่ระบุชิ้นงาน";
 };
+const platformForRef = ref => {
+  const value = String(ref || "").toLowerCase();
+  if (value === "qr-spot-vdo") return "YouTube";
+  if (value.startsWith("ad-fb-") || value.startsWith("ad-ig-")) return "Meta";
+  if (value.startsWith("ad-gg-")) return "Google Ads";
+  if (value.startsWith("ad-tik-") || value.startsWith("ad-tt-")) return "TikTok";
+  return "";
+};
+function PlatformBadge({ platform }) {
+  const label = platform === "Google Ads" ? "Google Ads" : platform;
+  const icon = platform === "YouTube" ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4" fill="#ff0033"/><path d="m10 9 5 3-5 3Z" fill="white"/></svg>
+    : platform === "Google Ads" ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 7.5 13a3.5 3.5 0 1 1-6 3.5L3 8.5A3.5 3.5 0 0 1 9 5Z" fill="#4285f4"/><path d="m15.5 4.8 5.4 9.4a3.5 3.5 0 0 1-6 3.5L9.5 8.3Z" fill="#34a853"/><circle cx="6.5" cy="18" r="3" fill="#fbbc04"/></svg>
+    : platform === "TikTok" ? <span className="platform-note">♪</span>
+    : <span className="platform-meta">∞</span>;
+  return <span className={`platform-badge platform-${platform.toLowerCase().replace(/\s+/g, "-")}`} title={label} aria-label={label}>{icon}</span>;
+}
 const SIMPLE_TIERS = [
   { key: "ขายช่วงแอดรัน", color: "#2a62d6" },
   { key: "แอดไม่รัน", color: "#d6d4cc" },
@@ -172,11 +188,16 @@ export default function Dashboard({ edition }) {
     for (let d = new Date(from + "T00:00:00Z"); d.toISOString().slice(0, 10) <= to; d.setUTCDate(d.getUTCDate() + 1)) days.push(d.toISOString().slice(0, 10));
 
     const byCreative = {};
+    const addPlatform = (creative, platform) => {
+      if (platform && !creative.platforms.includes(platform)) creative.platforms.push(platform);
+    };
     const creativeOrders = rule === "simple" ? during : strict;
     for (const o of creativeOrders) {
       const name = rule === "simple" ? simpleCreativeFor(o, edition) : o.creative;
-      const c = (byCreative[name] ||= { name, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, linked: 0, noRef: 0, spend: 0 });
+      const c = (byCreative[name] ||= { name, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, linked: 0, noRef: 0, spend: 0, platforms: [] });
       c.t += o.t; c.v += o.v;
+      addPlatform(c, platformForRef(o.ref));
+      if (rule === "strict" && o.adId) addPlatform(c, "Meta");
       if (rule === "simple") {
         if (o.ref) c.linked += o.t; else c.noRef += o.t;
       } else {
@@ -187,7 +208,9 @@ export default function Dashboard({ edition }) {
     for (const s of metaSpendIn) {
       const name = creativeFromAdName(s.adName);
       const k = Object.keys(byCreative).find(k => k.toLowerCase().replace(/\s/g, "") === name.toLowerCase().replace(/\s/g, "")) || name;
-      (byCreative[k] ||= { name: k, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, spend: 0 }).spend += s.cost;
+      const c = (byCreative[k] ||= { name: k, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, linked: 0, noRef: 0, spend: 0, platforms: [] });
+      c.spend += s.cost;
+      addPlatform(c, "Meta");
     }
     for (const media of ads?.creativeMedia || []) {
       const name = creativeFromAdName(media.adName);
@@ -196,6 +219,7 @@ export default function Dashboard({ edition }) {
         byCreative[k].imageUrl = media.imageUrl;
         byCreative[k].fallbackImageUrl = media.fallbackImageUrl || "";
       }
+      if (k) addPlatform(byCreative[k], media.videoUrl ? "YouTube" : media.platform === "Google Ads" ? "Google Ads" : "Meta");
     }
 
     const byType = {};
@@ -325,7 +349,7 @@ export default function Dashboard({ edition }) {
                   }} /> : <span>ไม่มีภาพ Creative</span>}
                 </div>
                 <div className="creative-body">
-                  <h3>{c.name}</h3>
+                  <div className="creative-title"><h3>{c.name}</h3>{c.platforms.map(platform => <PlatformBadge key={platform} platform={platform} />)}</div>
                   <p className="creative-total"><b>{num(c.t)}</b> {rule === "simple" ? "ยอดช่วงแอดรัน" : "ยอดที่จับคู่ได้"} · {baht(c.v)}</p>
                   <p className="creative-breakdown">{rule === "simple" ? `มี ref ${num(c.linked)} · ไม่มี ref ${num(c.noRef)}` : `Ref Ad ${num(c.refAd)} · Ref Org from Ad ${num(c.org)} · Direct (Pixel) ${num(c.direct)}`}</p>
                   <div className="creative-range"><span>SELECTED RANGE</span><b>{num(c.t)}</b><small>{range[0]} – {range[1]}</small></div>
