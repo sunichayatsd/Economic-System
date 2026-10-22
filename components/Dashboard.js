@@ -13,6 +13,7 @@ const num = n => Math.round(n).toLocaleString("en-US");
 const baht = n => "฿" + num(n);
 const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "—");
 const pad = n => String(n).padStart(2, "0");
+const sameCreative = (a, b) => String(a).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "") === String(b).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "");
 const SIMPLE_TIERS = [
   { key: "ขายช่วงแอดรัน", color: "#2a62d6" },
   { key: "แอดไม่รัน", color: "#d6d4cc" },
@@ -170,6 +171,11 @@ export default function Dashboard({ edition }) {
       const k = Object.keys(byCreative).find(k => k.toLowerCase().replace(/\s/g, "") === name.toLowerCase().replace(/\s/g, "")) || name;
       (byCreative[k] ||= { name: k, t: 0, v: 0, refAd: 0, org: 0, direct: 0, view: 0, spend: 0 }).spend += s.cost;
     }
+    for (const media of ads?.creativeMedia || []) {
+      const name = creativeFromAdName(media.adName);
+      const k = Object.keys(byCreative).find(k => sameCreative(k, name));
+      if (k && !byCreative[k].imageUrl) byCreative[k].imageUrl = media.imageUrl;
+    }
 
     const byType = {};
     for (const o of inR) for (const [ty, n] of Object.entries(o.types)) {
@@ -285,6 +291,25 @@ export default function Dashboard({ edition }) {
                     data: view.days.map(d => view.sumT(view.inR.filter(o => o.day === d && view.tierOf(o) === t.key))) })) }} />
             </div>
           </div>
+
+          {view.creatives.length > 0 && <section className="creative-section">
+            <div className="creative-heading"><div><h2>Creative performance</h2><p>ยอดที่จับคู่ได้จากข้อมูลออเดอร์ในช่วงวันที่เลือก · รูปจาก Meta Ads ผ่าน Supermetrics</p></div></div>
+            <div className="creative-grid">
+              {view.creatives.map(c => <article className="creative-card" key={c.name}>
+                <div className="creative-image">
+                  {c.imageUrl ? <img src={c.imageUrl} alt={c.name} referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = "none"; }} /> : <span>ไม่มีภาพ Creative</span>}
+                </div>
+                <div className="creative-body">
+                  <h3>{c.name}</h3>
+                  <p className="creative-total"><b>{num(c.t)}</b> ยอดที่จับคู่ได้ · {baht(c.v)}</p>
+                  <p className="creative-breakdown">Ref Ad {num(c.refAd)} · Ref Org from Ad {num(c.org)} · Direct (Pixel) {num(c.direct)}</p>
+                  <div className="creative-range"><span>SELECTED RANGE</span><b>{num(c.t)}</b><small>{range[0]} – {range[1]}</small></div>
+                  <p className="creative-cost">ค่า Meta Ads {c.spend ? baht(c.spend) : "—"}{c.spend && c.t ? ` · ${baht(c.spend / c.t)}/ใบ` : ""}</p>
+                </div>
+              </article>)}
+            </div>
+            {ads?.creativeMediaWarning && <p className="warn">ดึงรูป Creative ไม่ครบ: {ads.creativeMediaWarning}</p>}
+          </section>}
 
           {rule === "simple" && (
             <div className="card">

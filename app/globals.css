@@ -42,6 +42,15 @@ input[type=date]{font:inherit;padding:6px 8px;border:1px solid var(--line);borde
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:6px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
 .chart{position:relative;height:320px}
+.creative-section{margin-top:18px}.creative-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
+.creative-heading h2{font-size:18px;margin:0}.creative-heading p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.creative-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.creative-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;gap:16px;min-height:220px}
+.creative-image{width:150px;min-width:150px;height:190px;border-radius:7px;overflow:hidden;background:#ecece8;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:8px}
+.creative-image img{width:100%;height:100%;object-fit:cover}.creative-body{min-width:0;flex:1}.creative-body h3{font-size:17px;margin:0 0 6px;line-height:1.35}
+.creative-total{margin:0;color:var(--muted)}.creative-total b{font:600 28px "IBM Plex Mono",monospace;color:var(--ink);margin-right:4px}.creative-breakdown{margin:3px 0 12px;color:var(--muted);font-size:13px}
+.creative-range{border-top:1px dashed var(--line);padding-top:9px;display:flex;flex-direction:column;gap:1px}.creative-range span{font-size:11px;color:var(--muted);letter-spacing:.08em}.creative-range b{font:600 24px "IBM Plex Mono",monospace;color:var(--accent)}.creative-range small{color:var(--muted)}
+.creative-cost{margin:10px 0 0;color:var(--muted);font-size:13px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .tbl{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -60,4 +69,5 @@ input.text{font:inherit;padding:7px 10px;border:1px solid var(--line);border-rad
 .warn{color:var(--bad);font-size:13px}
 .checks{margin:0;padding-left:18px;font-size:13.5px}
 .checks .good{color:var(--good)} .checks .bad{color:var(--bad)}
-@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid2,.series,.sync-grid{grid-template-columns:1fr}}
+@media (max-width:900px){.kpis{grid-template-columns:1fr 1fr}.grid2,.series,.sync-grid,.creative-grid{grid-template-columns:1fr}}
+@media (max-width:520px){.creative-card{padding:12px;gap:12px}.creative-image{width:105px;min-width:105px;height:150px}.creative-body h3{font-size:15px}.creative-total b{font-size:24px}}
