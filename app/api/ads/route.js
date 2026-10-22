@@ -14,9 +14,9 @@ export async function GET(req) {
   if (!edition?.metaAccount || !edition?.prefix) return Response.json({ error: "Event นี้ยังไม่ได้ตั้งค่าบัญชีโฆษณา" }, { status: 400 });
   const cached = await readAdCache(edition.slug).catch(() => null);
   const fresh = cached && Date.now() - new Date(cached.fetched_at) < STALE_MS;
-  const age = cached ? Date.now() - new Date(cached.fetched_at) : Infinity;
-  // a forced refresh is still throttled to one live pull per 10 minutes, to protect the shared Supermetrics quota
-  if (fresh && (searchParams.get("refresh") !== "1" || age < 10 * 60e3)) return Response.json({ ...cached.data, cached: true });
+  // Normal page loads use the cache. An explicit dashboard button press always
+  // refreshes so the user can immediately get the latest spend and creative media.
+  if (fresh && searchParams.get("refresh") !== "1") return Response.json({ ...cached.data, cached: true });
   if (!configured()) {
     if (cached) return Response.json({ ...cached.data, cached: true });
     return Response.json({ error: "ยังไม่ได้ใส่ Supermetrics token ใน Vercel" }, { status: 503 });
