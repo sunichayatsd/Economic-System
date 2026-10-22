@@ -13,7 +13,11 @@ const num = n => Math.round(n).toLocaleString("en-US");
 const baht = n => "฿" + num(n);
 const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "—");
 const pad = n => String(n).padStart(2, "0");
-const sameCreative = (a, b) => String(a).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "") === String(b).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "");
+const sameCreative = (a, b) => {
+  const left = String(a).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "");
+  const right = String(b).toLowerCase().replace(/[^a-z0-9ก-๙]/g, "");
+  return left === right || left.startsWith(right) || right.startsWith(left);
+};
 const SIMPLE_TIERS = [
   { key: "ขายช่วงแอดรัน", color: "#2a62d6" },
   { key: "แอดไม่รัน", color: "#d6d4cc" },
@@ -173,7 +177,7 @@ export default function Dashboard({ edition }) {
     }
     for (const media of ads?.creativeMedia || []) {
       const name = creativeFromAdName(media.adName);
-      const k = Object.keys(byCreative).find(k => sameCreative(k, name));
+      const k = Object.keys(byCreative).sort((a, b) => b.length - a.length).find(k => sameCreative(k, name));
       if (k && !byCreative[k].imageUrl) byCreative[k].imageUrl = media.imageUrl;
     }
 
