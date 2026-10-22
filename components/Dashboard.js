@@ -280,7 +280,7 @@ export default function Dashboard({ edition }) {
       </section>
 
       <div className="pivot-entry">
-        <Link className="ghost pivot-link" href={`/event/${edition.slug}/pivot`}>ตารางวิเคราะห์ (ทดลอง)</Link>
+        <Link className="pivot-link" href={`/event/${edition.slug}/pivot`}>เปิดตารางวิเคราะห์ <span aria-hidden="true">→</span></Link>
       </div>
 
       {view && (
