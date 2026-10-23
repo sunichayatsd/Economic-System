@@ -420,20 +420,22 @@ function OverallPerformance({ view, ads, rule }) {
   const reach = delivery.reach || 0;
   const engagement = delivery.engagement || 0;
   const traffic = delivery.linkClicks || 0;
+  const platformNames = Object.keys(ads?.funnelByPlatform || {}).join(" + ") || "Meta Ads";
+  const mediaSource = ads?.funnelComplete ? platformNames : `${platformNames} · รอข้อมูลบางแพลตฟอร์ม`;
   const ctaLabel = rule === "simple" ? "ยอดบัตรผ่าน CTA แอด" : "ยอดบัตรที่จับคู่กับแอด";
   return <section className="performance card">
     <div className="performance-head"><div><h2>Overall Performance</h2><p>Funnel ที่บอกชัดว่าแต่ละ metric อยู่ขั้นไหน ตั้งแต่การมองเห็นจนถึงยอดขาย</p></div><span className="performance-range">SELECTED RANGE</span></div>
     <div className="performance-layout">
-      <FunnelGraphic impressions={impressions} reach={reach} engagement={engagement} traffic={traffic} paid={paid} cta={cta} revenue={view.sumV(view.inR)} />
+      <FunnelGraphic />
       <div className="performance-metric-list">
-        <PerformanceMetric level="visibility" label="Impression" value={impressions} source="Meta Ads" />
-        <PerformanceMetric level="visibility" label="Reach" value={reach} source="Meta Ads · คนไม่ซ้ำ" />
-        <PerformanceMetric level="engagement" label="Engagement" value={engagement} source="Meta post engagements" />
-        <PerformanceMetric level="traffic" label="Clicks to Zipevent" value={traffic} source="Meta link clicks" />
+        <PerformanceMetric level="visibility" label="Impression" value={impressions} source={mediaSource} />
+        <PerformanceMetric level="visibility" label="Reach" value={reach} source={`${mediaSource} · ผู้ชมอาจซ้ำข้ามแพลตฟอร์ม`} />
+        <PerformanceMetric level="engagement" label="Engagement" value={engagement} source={mediaSource} />
+        <PerformanceMetric level="traffic" label="Clicks to Zipevent" value={traffic} source={mediaSource} />
         <div className="sales-metrics"><PerformanceMetric level="sales" label="Sales" value={paid} source="Paid Ticket · ช่วงวันที่เลือก" /><PerformanceMetric level="sales" label="Sales (Ad Tracked)" value={cta} source={rule === "simple" ? "CTA ในช่วงแอดรัน" : "จับคู่ด้วย Ad ID"} /></div>
       </div>
     </div>
-    <p className="performance-note">ต้นทาง Visibility, Engagement และ Traffic คือ Meta Ads; Sales มาจากไฟล์ Zipevent. “CTA” เป็นการนับตาม ref CTA และช่วงเวลาแอดรัน จึงช่วยดูภาพรวม ไม่ได้ยืนยันว่าโฆษณาเป็นสาเหตุของทุกการซื้อ{ads?.funnelWarning ? " · บาง metric รอ Supermetrics ตอบกลับ" : ""}</p>
+    <p className="performance-note">Visibility, Engagement และ Traffic รวมจาก Ads Manager ที่ดึงสำเร็จ; Reach เป็นผลรวมรายแพลตฟอร์ม จึงอาจมีผู้ชมซ้ำข้ามแพลตฟอร์ม. Sales มาจากไฟล์ Zipevent. “CTA” เป็นการนับตาม ref CTA และช่วงเวลาแอดรัน{ads?.funnelWarning ? " · บาง metric รอ Supermetrics ตอบกลับ" : ""}</p>
   </section>;
 }
 
@@ -441,17 +443,16 @@ function PerformanceMetric({ level, label, value, source }) {
   return <div className={`performance-metric ${level}`}><span>{label}</span><b>{value ? num(value) : "—"}</b><small>{source}</small></div>;
 }
 
-function FunnelGraphic({ impressions, reach, engagement, traffic, paid, cta, revenue }) {
+function FunnelGraphic() {
   const stages = [
-    { points: "18,8 582,8 445,164 155,164", color: "#dce9ff", text: "#164b9b", title: "AWARENESS", value: `Imp ${impressions ? num(impressions) : "—"} · Reach ${reach ? num(reach) : "—"}`, y: 77 },
-    { points: "155,164 445,164 378,239 222,239", color: "#a8c8fb", text: "#123d80", title: "ENGAGEMENT", value: engagement ? num(engagement) : "—", y: 198 },
-    { points: "222,239 378,239 326,314 274,314", color: "#5e92e4", text: "#fff", title: "TRAFFIC", value: `${traffic ? num(traffic) : "—"} clicks`, y: 273 },
-    { points: "274,314 326,314 307,390 293,390", color: "#245fb8", text: "#fff", title: "SALES", value: `${num(paid)} Paid · ${num(cta)} CTA`, y: 348 },
+    { points: "18,8 582,8 445,164 155,164", color: "#dce9ff", text: "#164b9b", title: "AWARENESS", y: 97 },
+    { points: "155,164 445,164 378,239 222,239", color: "#a8c8fb", text: "#123d80", title: "ENGAGEMENT", y: 207 },
+    { points: "222,239 378,239 326,314 274,314", color: "#5e92e4", text: "#fff", title: "TRAFFIC", y: 282 },
+    { points: "274,314 326,314 307,390 293,390", color: "#245fb8", text: "#fff", title: "SALES", y: 356 },
   ];
   return <div className="funnel-svg" aria-label="ภาพรวมเส้นทางยอดขาย">
     <svg viewBox="0 0 600 412" role="img" aria-label="Funnel จาก Awareness ถึง Sales">
-      {stages.map(stage => <g key={stage.title}><polygon points={stage.points} fill={stage.color} /><text className="funnel-svg-title" style={{ fill: stage.text }} x="300" y={stage.y} textAnchor="middle">{stage.title}</text><text className="funnel-svg-value" style={{ fill: stage.text }} x="300" y={stage.y + 25} textAnchor="middle">{stage.value}</text></g>)}
-      <text className="funnel-svg-revenue" x="300" y="408" textAnchor="middle">{baht(revenue)} Revenue</text>
+      {stages.map(stage => <g key={stage.title}><polygon points={stage.points} fill={stage.color} /><text className="funnel-svg-title" style={{ fill: stage.text }} x="300" y={stage.y} textAnchor="middle">{stage.title}</text></g>)}
     </svg>
   </div>;
 }
