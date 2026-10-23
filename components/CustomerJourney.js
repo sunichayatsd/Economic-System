@@ -99,13 +99,13 @@ export default function CustomerJourney({ edition }) {
         return <article className={`journey-step ${step.accent}`} key={step.label}>
           <div className="journey-preview">{step.imageUrl ? <img src={step.imageUrl} alt={`Touchpoint: ${step.title}`} /> : <><div className="preview-top" /><div className="preview-content"><i /><i /><i /></div><div className="preview-action">{step.action}</div></>}</div>
           <code>{step.path || "ไม่มี Page path filter"}</code><h3>{step.title}</h3>
-          <div className="journey-event"><b>{step.event}</b><div><span>ผลรวม USERS รายวัน</span><strong>{step.stats ? num(step.stats.users) : "—"}</strong></div><div><span>EVENT COUNT</span><strong>{step.stats ? num(step.stats.count) : "—"}</strong></div></div>
+          <div className="journey-event"><b>{step.event}</b><div><span>ผู้ใช้ใน CLOSED FUNNEL</span><strong>{step.stats ? num(step.stats.users) : "—"}</strong></div><div><span>EVENT COUNT</span><strong>{step.stats ? num(step.stats.count) : "—"}</strong></div></div>
           <p>{step.description}</p>
           {index < cards.length - 1 && <><footer>{hasFunnel ? <><b>{((nextUsers / Math.max(1, currentUsers)) * 100).toFixed(1)}%</b> continued <i /> {num(dropped)} dropped</> : <>— continued <i /> — dropped</>}</footer><div className="journey-connector" aria-label="Drop off"><div><span>Drop off</span><b>{dropRate === null ? "—" : `${(dropRate * 100).toFixed(1)}%`}</b></div><i aria-hidden="true" /></div></>}
         </article>;
       })}
     </section>
 
-    <section className="journey-guide card"><h3>ระบบนี้ทำอะไรได้</h3><p>ดึง custom events ของ Zipevent ได้แก่ View, Draft, WaitingPayment และ Completed จาก GA4 Property ที่ตั้งไว้ แล้วรวม totalUsers รายวันและ eventCount ตามช่วงวันที่ที่เลือก โดย Completed ใช้วิเคราะห์ขั้นตอนการซื้อเท่านั้น ไม่ใช่ยอดขายบัตรจริง</p></section>
+    <section className="journey-guide card"><h3>ระบบนี้ทำอะไรได้</h3><p>สร้าง Closed Funnel จาก custom events ของ Zipevent ได้แก่ View → Draft → WaitingPayment → Completed แล้วนับผู้ใช้ที่ผ่านตามลำดับจริง ตัวเลขผู้ใช้จึงลดลงจากซ้ายไปขวาเสมอ ส่วน Event count แสดงจำนวนครั้งที่ Event นั้นเกิดขึ้น และ Completed ใช้วิเคราะห์ขั้นตอนการซื้อ ไม่ใช่ยอดขายบัตรจริง</p></section>
   </main>;
 }
