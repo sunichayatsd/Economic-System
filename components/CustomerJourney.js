@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
-const steps = [
-  { route: "/e/economic-forum-2026", title: "Event page", event: "page_view", description: "users viewed", accent: "blue" },
+const stepTemplate = [
+  { title: "Event page", event: "page_view", description: "users viewed", accent: "blue" },
   { route: "/order/edit/", title: "Filling the form", event: "Draft", description: "users started an order", accent: "violet" },
   { route: "/order/payment/", title: "Waiting for payment", event: "WaitingPayment", description: "users saw the QR", accent: "amber" },
   { route: "/order/complete/", title: "Purchase complete", event: "Completed", description: "users paid", accent: "green" },
 ];
 
 export default function CustomerJourney({ edition }) {
+  const [range, setRange] = useState([edition.start, edition.end]);
+  const [eventPath, setEventPath] = useState(`/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}`);
+  const steps = [{ ...stepTemplate[0], route: eventPath }, ...stepTemplate.slice(1)];
   return <main className="wrap journey-page">
     <div className="journey-head">
       <div>
@@ -19,6 +23,12 @@ export default function CustomerJourney({ edition }) {
       </div>
       <Link className="ghost pivot-back" href={`/event/${edition.slug}`}>← กลับหน้าแดชบอร์ด</Link>
     </div>
+
+    <section className="journey-controls" aria-label="ตัวกรอง Customer Journey">
+      <label>ช่วงเวลา ตั้งแต่ <input type="date" value={range[0]} onChange={event => setRange([event.target.value, range[1]])} /></label>
+      <label>ถึง <input type="date" value={range[1]} onChange={event => setRange([range[0], event.target.value])} /></label>
+      <small>ใช้กำหนดช่วงข้อมูล GA4 เมื่อเชื่อมแล้ว</small>
+    </section>
 
     <section className="journey-status card">
       <span className="journey-status-dot" />
@@ -32,13 +42,21 @@ export default function CustomerJourney({ edition }) {
           <div className="preview-content"><i /><i /><i /></div>
           <div className="preview-action">{index === 3 ? "Complete" : index === 2 ? "Pay now" : index === 1 ? "Continue" : "Buy ticket"}</div>
         </div>
-        <code>{step.route}</code>
+        {index === 0
+          ? <input className="journey-route" aria-label="Event page path" list="event-path-options" value={eventPath} onChange={event => setEventPath(event.target.value)} />
+          : <code>{step.route}</code>}
         <h3>{step.title}</h3>
         <div className="journey-event"><b>{step.event}</b><div><span>TOTAL USERS</span><strong>—</strong></div><div><span>EVENT COUNT</span><strong>—</strong></div></div>
         <p>{step.description}</p>
         {index < steps.length - 1 && <footer><b>—</b> continued <i /> — dropped</footer>}
       </article>)}
     </section>
+
+    <datalist id="event-path-options">
+      <option value={`/e/economic-forum-${edition.year}`} />
+      <option value={`/e/${edition.slug}`} />
+      <option value="/" />
+    </datalist>
 
     <section className="journey-guide card">
       <h3>สิ่งที่จะดึงจาก GA4 เมื่อเชื่อมแล้ว</h3>
