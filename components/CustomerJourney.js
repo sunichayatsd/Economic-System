@@ -25,6 +25,7 @@ export default function CustomerJourney({ edition }) {
   const [integration, setIntegration] = useState({ loading: true, storage: false, directConfigured: false });
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const reportRangeMatches = Boolean(report && report.startDate === range[0] && report.endDate === range[1]);
 
   useEffect(() => {
     fetch(`/api/analytics?slug=${edition.slug}`).then(response => response.json()).then(data => {
@@ -36,7 +37,7 @@ export default function CustomerJourney({ edition }) {
     }).catch(error => { setIntegration({ loading: false, storage: false, directConfigured: false }); setNote(error.message || "โหลดการตั้งค่า GA4 ไม่สำเร็จ"); });
   }, [edition]);
 
-  const cards = useMemo(() => presentation.map((item, index) => ({ ...config.steps[index], ...item, stats: report?.steps?.[index] || null })), [config, report]);
+  const cards = useMemo(() => presentation.map((item, index) => ({ ...config.steps[index], ...item, stats: reportRangeMatches ? report?.steps?.[index] || null : null })), [config, report, reportRangeMatches]);
   const editStep = (index, key, value) => setConfig(current => ({ ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, [key]: value } : step) }));
 
   async function saveConfig() {
@@ -63,7 +64,7 @@ export default function CustomerJourney({ edition }) {
 
   return <main className="wrap journey-page">
     <div className="journey-head">
-      <div><p className="sync-kicker">GOOGLE ANALYTICS 4 · CUSTOMER JOURNEY</p><h2>Customer Journey</h2><p className="muted">ตั้งค่าได้แยกตาม Event แล้วดึง Funnel ตามช่วงเวลาที่เลือก</p></div>
+      <div><p className="sync-kicker">GOOGLE ANALYTICS 4 · CUSTOMER JOURNEY</p><h2>Customer Journey</h2><p className="muted">ตั้งค่าแยกตาม Event แล้วดึงตัวเลขตามช่วงเวลาที่เลือก</p></div>
       <Link className="ghost pivot-back" href={`/event/${edition.slug}`}>← กลับหน้าแดชบอร์ด</Link>
     </div>
 
@@ -71,7 +72,7 @@ export default function CustomerJourney({ edition }) {
       <label>ช่วงเวลา ตั้งแต่ <input type="date" value={range[0]} onChange={event => setRange([event.target.value, range[1]])} /></label>
       <label>ถึง <input type="date" value={range[1]} onChange={event => setRange([range[0], event.target.value])} /></label>
       <button className="primary" disabled={saving || !integration.directConfigured} onClick={refreshGa4}>{saving ? "กำลังอัปเดต…" : "อัปเดตจาก GA4"}</button>
-      <small>{integration.directConfigured ? "ดึงข้อมูลโดยตรงจาก GA4 Data API" : "รอเชื่อม Google Service Account"}</small>
+      <small>{!integration.directConfigured ? "รอเชื่อม Google Service Account" : report && !reportRangeMatches ? `เปลี่ยนช่วงวันที่แล้ว — กดอัปเดต (ตัวเลขเดิมคือ ${report.startDate} ถึง ${report.endDate})` : report ? `ข้อมูลช่วง ${report.startDate} ถึง ${report.endDate}` : "ดึงข้อมูลโดยตรงจาก GA4 Data API"}</small>
     </section>
 
     <details className="ga4-setup card" open={!config.propertyId}>
@@ -84,7 +85,8 @@ export default function CustomerJourney({ edition }) {
       <div className="ga4-actions"><button className="primary" disabled={saving || !integration.storage} onClick={saveConfig}>{saving ? "กำลังบันทึก…" : "บันทึก Setup"}</button><span className={note.includes("ไม่") || note.includes("สำเร็จ") ? "err" : "muted"}>{note || (integration.loading ? "กำลังตรวจสถานะ…" : integration.storage ? "การตั้งค่านี้จะถูกเก็บในฐานข้อมูล" : "ยังไม่พบฐานข้อมูลสำหรับบันทึก Setup")}</span></div>
     </details>
     {!integration.directConfigured && <section className="journey-status card"><span className="journey-status-dot" /><div><b>ยังไม่ได้เชื่อม Google Analytics 4</b><p>กรอกและบันทึก Setup ได้ก่อน จากนั้นเพิ่ม Service Account แบบอ่านอย่างเดียวใน Vercel จึงจะกดอัปเดตตัวเลขจริงได้</p></div></section>}
-    {report?.funnelWarning && <p className="warn journey-warn">{report.funnelWarning}</p>}
+    {reportRangeMatches && report?.funnelWarning && <p className="warn journey-warn">{report.funnelWarning}</p>}
+    {reportRangeMatches && report?.sequenceNote && <p className="journey-note">{report.sequenceNote}</p>}
 
     <section className="journey-grid" aria-label="Customer journey from event page to completed purchase">
       {cards.map((step, index) => {
