@@ -79,7 +79,7 @@ export default function PivotTable({ edition }) {
 
   const choosePrimary = value => { setPrimary(value); if (value === secondary) setSecondary(dimensions.find(([candidate]) => candidate !== value)?.[0] || "ref"); };
   return <main className="wrap">
-    <div className="pivot-head"><div><h2>Pivot ยอดขาย (ทดลอง)</h2><p className="muted">รูปแบบเดียวกับ Pivot: นับ Ticket Type และรวม Price ตามข้อมูล Zipevent</p></div><Link className="ghost pivot-back" href={`/event/${edition.slug}`}>← กลับหน้าแดชบอร์ด</Link></div>
+    <div className="pivot-head"><div><h2>Pivot ยอดขาย</h2><p className="muted">รูปแบบเดียวกับ Pivot: นับ Ticket Type และรวม Price ตามข้อมูล Zipevent</p></div><Link className="ghost pivot-back" href={`/event/${edition.slug}`}>← กลับหน้าแดชบอร์ด</Link></div>
     {message && <section className="card"><p className="err">{message}</p><Link className="primary pivot-back" href={`/event/${edition.slug}`}>ไปอัปโหลดไฟล์ Zipevent</Link></section>}
     {!message && !pivot && <section className="card"><p className="muted">กำลังโหลดข้อมูลยอดขาย…</p></section>}
     {pivot && <>
