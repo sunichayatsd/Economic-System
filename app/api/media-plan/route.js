@@ -22,8 +22,9 @@ export async function GET(req) {
   const edition = findEdition(slug);
   if (!edition) return Response.json({ error: "ไม่พบ Event" }, { status: 404 });
   const saved = await readEventConfig(slug);
-  const rows = cleanRows(saved?.config?.mediaPlan?.rows);
-  return Response.json({ storage: hasDb(), rows: rows.length ? rows : defaults(), updatedAt: saved?.updated_at || null });
+  const plan = saved?.config?.mediaPlan;
+  const rows = cleanRows(plan?.rows);
+  return Response.json({ storage: hasDb(), rows: rows.length ? rows : defaults(), updatedAt: plan?.updatedAt || null });
 }
 
 export async function POST(req) {
@@ -33,6 +34,7 @@ export async function POST(req) {
   if (!hasDb()) return Response.json({ error: "ยังไม่ได้เชื่อมฐานข้อมูล" }, { status: 503 });
   const rows = cleanRows(body.rows);
   if (!rows.length) return Response.json({ error: "Media Plan ต้องมีอย่างน้อย 1 แถว" }, { status: 400 });
-  const saved = await writeEventConfig(edition.slug, { mediaPlan: { rows } });
-  return Response.json({ rows, saved });
+  const updatedAt = new Date().toISOString();
+  const saved = await writeEventConfig(edition.slug, { mediaPlan: { rows, updatedAt } });
+  return Response.json({ rows, updatedAt, saved });
 }
