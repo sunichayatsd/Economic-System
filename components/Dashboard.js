@@ -281,7 +281,8 @@ export default function Dashboard({ edition }) {
       </section>
 
       <div className="pivot-entry">
-        <Link className="pivot-link" href={`/event/${edition.slug}/pivot`}>เปิดตารางวิเคราะห์ <span aria-hidden="true">→</span></Link>
+        <Link className="pivot-link" href={`/event/${edition.slug}/pivot`}>เปิด Pivot Table <span aria-hidden="true">→</span></Link>
+        <a className="pivot-link" href="#customer-journey">Customer Journey <span aria-hidden="true">→</span></a>
       </div>
 
       {view && (
@@ -423,7 +424,7 @@ function OverallPerformance({ view, ads, rule }) {
   const platformNames = Object.keys(ads?.funnelByPlatform || {}).join(" + ") || "Meta Ads";
   const mediaSource = ads?.funnelComplete ? platformNames : `${platformNames} · รอข้อมูลบางแพลตฟอร์ม`;
   const ctaLabel = rule === "simple" ? "ยอดบัตรผ่าน CTA แอด" : "ยอดบัตรที่จับคู่กับแอด";
-  return <section className="performance card">
+  return <section id="customer-journey" className="performance card">
     <div className="performance-head"><div><h2>Overall Performance</h2><p>Funnel ที่บอกชัดว่าแต่ละ metric อยู่ขั้นไหน ตั้งแต่การมองเห็นจนถึงยอดขาย</p></div><span className="performance-range">SELECTED RANGE</span></div>
     <div className="performance-layout">
       <FunnelGraphic />
