@@ -25,7 +25,7 @@ export default function CustomerJourney({ edition }) {
   const [integration, setIntegration] = useState({ loading: true, storage: false, directConfigured: false });
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const autoRequestRef = useRef("");
+  const autoTimerRef = useRef(null);
   const requestIdRef = useRef(0);
   const reportRangeMatches = Boolean(report && report.startDate === range[0] && report.endDate === range[1]);
 
@@ -42,7 +42,15 @@ export default function CustomerJourney({ edition }) {
 
   const cards = useMemo(() => presentation.map((item, index) => ({ ...config.steps[index], ...item, stats: reportRangeMatches ? report?.steps?.[index] || null : null })), [config, report, reportRangeMatches]);
   const editStep = (index, key, value) => setConfig(current => ({ ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, [key]: value } : step) }));
-  const changeRange = nextRange => { requestIdRef.current += 1; setRange(nextRange); setNote(""); };
+  const changeRange = nextRange => {
+    requestIdRef.current += 1;
+    setRange(nextRange);
+    setNote("");
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    const validRange = /^\d{4}-\d{2}-\d{2}$/.test(nextRange[0]) && /^\d{4}-\d{2}-\d{2}$/.test(nextRange[1]) && nextRange[0] <= nextRange[1];
+    if (!integration.directConfigured || !integration.storage || !validRange) return;
+    autoTimerRef.current = setTimeout(() => refreshGa4(false, nextRange), 650);
+  };
 
   async function saveConfig() {
     setSaving(true); setNote("");
@@ -55,13 +63,13 @@ export default function CustomerJourney({ edition }) {
     } catch (error) { setNote(error.message || "บันทึกไม่สำเร็จ"); return false; } finally { setSaving(false); }
   }
 
-  async function refreshGa4(saveFirst = true) {
+  async function refreshGa4(saveFirst = true, requestedRange = range) {
     if (saveFirst && !(await saveConfig())) return;
     const requestId = ++requestIdRef.current;
-    const requestedRange = [...range];
+    const targetRange = [...requestedRange];
     setSaving(true); setNote("");
     try {
-      const response = await fetch("/api/analytics", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: edition.slug, startDate: requestedRange[0], endDate: requestedRange[1] }) });
+      const response = await fetch("/api/analytics", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: edition.slug, startDate: targetRange[0], endDate: targetRange[1] }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "ดึงข้อมูลไม่สำเร็จ");
       if (requestId !== requestIdRef.current) return;
@@ -70,12 +78,8 @@ export default function CustomerJourney({ edition }) {
   }
 
   useEffect(() => {
-    const key = `${range[0]}:${range[1]}`;
-    const validRange = /^\d{4}-\d{2}-\d{2}$/.test(range[0]) && /^\d{4}-\d{2}-\d{2}$/.test(range[1]) && range[0] <= range[1];
-    if (integration.loading || !integration.directConfigured || !integration.storage || !validRange || reportRangeMatches || autoRequestRef.current === key) return;
-    const timer = setTimeout(() => { autoRequestRef.current = key; refreshGa4(false); }, 650);
-    return () => clearTimeout(timer);
-  }, [range, integration.loading, integration.directConfigured, integration.storage, reportRangeMatches]);
+    return () => { if (autoTimerRef.current) clearTimeout(autoTimerRef.current); };
+  }, []);
 
   return <main className="wrap journey-page">
     <div className="journey-head">
@@ -86,7 +90,7 @@ export default function CustomerJourney({ edition }) {
     <section className="journey-controls" aria-label="ตัวกรอง Customer Journey">
       <label>ช่วงเวลา ตั้งแต่ <input type="date" value={range[0]} onChange={event => changeRange([event.target.value, range[1]])} /></label>
       <label>ถึง <input type="date" value={range[1]} onChange={event => changeRange([range[0], event.target.value])} /></label>
-      <button className="primary" disabled={saving || !integration.directConfigured} onClick={() => refreshGa4(true)}>{saving ? "กำลังอัปเดต…" : "อัปเดตจาก GA4"}</button>
+      <button className="primary" disabled={saving || !integration.directConfigured} onClick={() => refreshGa4(true, range)}>{saving ? "กำลังอัปเดต…" : "อัปเดตจาก GA4"}</button>
       <small>{!integration.directConfigured ? "รอเชื่อม Google Service Account" : saving ? "กำลังดึง Closed Funnel ตามช่วงวันที่ที่เลือก…" : report && !reportRangeMatches ? "เปลี่ยนช่วงวันที่แล้ว — ระบบกำลังอัปเดตอัตโนมัติ" : report ? `ข้อมูลช่วง ${report.startDate} ถึง ${report.endDate} · บันทึกไว้แล้ว` : "ดึงข้อมูลโดยตรงจาก GA4 Data API"}</small>
     </section>
 
