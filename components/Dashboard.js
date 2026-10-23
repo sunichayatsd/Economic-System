@@ -415,23 +415,34 @@ function Kpi({ label, big, sub, hl }) {
 function OverallPerformance({ view, ads, rule }) {
   const paid = view.sumT(view.inR);
   const cta = view.sumT(rule === "simple" ? view.simpleTracked : view.tracked);
-  const impressions = view.metaImpressions;
-  const relative = impressions ? [100, Math.max(36, Math.round((cta / impressions) * 16000)), Math.max(28, Math.round((paid / impressions) * 16000))] : [100, 68, 46];
+  const delivery = ads?.funnel || {};
+  const impressions = delivery.impressions || view.metaImpressions;
+  const reach = delivery.reach || 0;
+  const engagement = delivery.engagement || 0;
+  const traffic = delivery.linkClicks || 0;
+  const relative = impressions ? [100, Math.max(80, Math.round((reach / impressions) * 100)), Math.max(62, Math.round((engagement / impressions) * 100)), Math.max(45, Math.round((traffic / impressions) * 120)), Math.max(32, Math.round((paid / impressions) * 18000))] : [100, 88, 74, 60, 44];
   const ctaLabel = rule === "simple" ? "ยอดบัตรผ่าน CTA แอด" : "ยอดบัตรที่จับคู่กับแอด";
   return <section className="performance card">
-    <div className="performance-head"><div><h2>Overall Performance</h2><p>ภาพรวมแบบเข้าใจง่าย: โฆษณาถูกเห็น → เกิดยอดผ่าน CTA → ยอดขายบัตร</p></div><span className="performance-range">SELECTED RANGE</span></div>
+    <div className="performance-head"><div><h2>Overall Performance</h2><p>Funnel ที่บอกชัดว่าแต่ละ metric อยู่ขั้นไหน ตั้งแต่การมองเห็นจนถึงยอดขาย</p></div><span className="performance-range">SELECTED RANGE</span></div>
     <div className="performance-layout">
-      <div className="performance-stats">
-        <div><span>ค่าแอดรวม</span><b>{ads?.spendComplete ? baht(view.spend) : "—"}</b><small>{ads?.spendComplete ? "รวมทุก Ads Manager" : "รอข้อมูลค่าแอดให้ครบ"}</small></div>
-        <div><span>Revenue รวม</span><b>{baht(view.sumV(view.inR))}</b><small>จาก Paid Ticket ทั้งหมด</small></div>
-        <div><span>Cost Per Ticket</span><b>{ads?.spendComplete && paid ? baht(view.spend / paid) : "—"}</b><small>ค่าแอดรวม ÷ บัตร Paid</small></div>
-      </div>
       <div className="css-funnel" aria-label="ภาพรวมเส้นทางยอดขาย">
-        <div className="funnel-stage funnel-impression" style={{ "--funnel-width": `${relative[0]}%` }}><span>1 · โฆษณาถูกเห็น</span><b>{impressions ? num(impressions) : "รอข้อมูล"}</b><small>Meta Ads impressions</small></div>
-        <div className="funnel-stage funnel-cta" style={{ "--funnel-width": `${relative[1]}%` }}><span>2 · {ctaLabel}</span><b>{num(cta)} ใบ</b><small>{paid ? `${pct(cta, paid)} ของยอดขายทั้งหมด` : "—"}</small></div>
-        <div className="funnel-stage funnel-sales" style={{ "--funnel-width": `${relative[2]}%` }}><span>3 · Paid Ticket</span><b>{num(paid)} ใบ</b><small>{baht(view.sumV(view.inR))} Revenue</small></div>
+        <div className="funnel-stage funnel-visibility" style={{ "--funnel-width": `${relative[0]}%` }}><span>1 · VISIBILITY — การมองเห็น</span><div className="funnel-metrics"><b>Imp {impressions ? num(impressions) : "—"}</b><b>Reach {reach ? num(reach) : "—"}</b></div><small>Meta Ads · Reach เป็นยอดคนไม่ซ้ำ</small></div>
+        <div className="funnel-stage funnel-engagement" style={{ "--funnel-width": `${relative[1]}%` }}><span>2 · ENGAGEMENT — การมีส่วนร่วม</span><div className="funnel-metrics"><b>{engagement ? num(engagement) : "—"}</b></div><small>Post engagement จาก Meta Ads</small></div>
+        <div className="funnel-stage funnel-traffic" style={{ "--funnel-width": `${relative[2]}%` }}><span>3 · TRAFFIC — การเข้าเว็บไซต์</span><div className="funnel-metrics"><b>{traffic ? num(traffic) : "—"} คลิก</b></div><small>Link clicks จาก Meta Ads</small></div>
+        <div className="funnel-stage funnel-sales" style={{ "--funnel-width": `${relative[3]}%` }}><span>4 · SALES — ยอดขายบัตร</span><div className="funnel-metrics"><b>{num(paid)} Paid Ticket</b><b>{num(cta)} CTA</b></div><small>{baht(view.sumV(view.inR))} Revenue · {ctaLabel}</small></div>
+      </div>
+      <div className="performance-metric-list">
+        <PerformanceMetric level="visibility" label="Impression" value={impressions} source="Meta Ads" />
+        <PerformanceMetric level="visibility" label="Reach" value={reach} source="Meta Ads · คนไม่ซ้ำ" />
+        <PerformanceMetric level="engagement" label="Engagement" value={engagement} source="Meta post engagements" />
+        <PerformanceMetric level="traffic" label="Clicks to Zipevent" value={traffic} source="Meta link clicks" />
+        <div className="sales-metrics"><PerformanceMetric level="sales" label="Sales" value={paid} source="Paid Ticket · ช่วงวันที่เลือก" /><PerformanceMetric level="sales" label="Sales (Ad Tracked)" value={cta} source={rule === "simple" ? "CTA ในช่วงแอดรัน" : "จับคู่ด้วย Ad ID"} /></div>
       </div>
     </div>
-    <p className="performance-note">หมายเหตุ: “ยอดผ่าน CTA แอด” นับจาก ref CTA ที่ตั้งค่าไว้และช่วงเวลาที่แอดรัน จึงช่วยดูภาพรวม ไม่ได้ยืนยันว่าโฆษณาเป็นสาเหตุของทุกการซื้อ</p>
+    <p className="performance-note">ต้นทาง Visibility, Engagement และ Traffic คือ Meta Ads; Sales มาจากไฟล์ Zipevent. “CTA” เป็นการนับตาม ref CTA และช่วงเวลาแอดรัน จึงช่วยดูภาพรวม ไม่ได้ยืนยันว่าโฆษณาเป็นสาเหตุของทุกการซื้อ{ads?.funnelWarning ? " · บาง metric รอ Supermetrics ตอบกลับ" : ""}</p>
   </section>;
+}
+
+function PerformanceMetric({ level, label, value, source }) {
+  return <div className={`performance-metric ${level}`}><span>{label}</span><b>{value ? num(value) : "—"}</b><small>{source}</small></div>;
 }
