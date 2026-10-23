@@ -445,14 +445,14 @@ function PerformanceMetric({ level, label, value, source }) {
 
 function FunnelGraphic() {
   const stages = [
-    { points: "18,8 582,8 445,164 155,164", color: "#dce9ff", text: "#164b9b", title: "AWARENESS", y: 97 },
-    { points: "155,164 445,164 378,239 222,239", color: "#a8c8fb", text: "#123d80", title: "ENGAGEMENT", y: 207 },
-    { points: "222,239 378,239 326,314 274,314", color: "#5e92e4", text: "#fff", title: "TRAFFIC", y: 282 },
-    { points: "274,314 326,314 307,390 293,390", color: "#245fb8", text: "#fff", title: "SALES", y: 356 },
+    { points: "18,8 582,8 445,164 155,164", color: "#dce9ff", title: "awareness" },
+    { points: "155,164 445,164 378,239 222,239", color: "#a8c8fb", title: "engagement" },
+    { points: "222,239 378,239 326,314 274,314", color: "#5e92e4", title: "traffic" },
+    { points: "274,314 326,314 307,390 293,390", color: "#245fb8", title: "sales" },
   ];
   return <div className="funnel-svg" aria-label="ภาพรวมเส้นทางยอดขาย">
     <svg viewBox="0 0 600 412" role="img" aria-label="Funnel จาก Awareness ถึง Sales">
-      {stages.map(stage => <g key={stage.title}><polygon points={stage.points} fill={stage.color} /><text className="funnel-svg-title" style={{ fill: stage.text }} x="300" y={stage.y} textAnchor="middle">{stage.title}</text></g>)}
+      {stages.map(stage => <polygon key={stage.title} points={stage.points} fill={stage.color} />)}
     </svg>
   </div>;
 }
