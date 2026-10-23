@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
-import EventFeaturePage from "@/components/EventFeaturePage";
+import MediaPlan from "@/components/MediaPlan";
 import { editionTitle, findEdition } from "@/lib/events";
 
 export default function MediaPlanPage({ params }) {
@@ -8,7 +8,7 @@ export default function MediaPlanPage({ params }) {
   if (!edition) notFound();
 
   return <>
-    <TopBar title={`${editionTitle(edition)} · Media Plan`} back />
-    <EventFeaturePage edition={edition} feature="media-plan" />
+    <TopBar title={`${editionTitle(edition)} · Media Plan`} back wide />
+    <MediaPlan edition={edition} />
   </>;
 }
