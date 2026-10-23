@@ -49,6 +49,7 @@ export default function CustomerJourney({ edition }) {
         <div className="journey-event"><b>{step.event}</b><div><span>TOTAL USERS</span><strong>—</strong></div><div><span>EVENT COUNT</span><strong>—</strong></div></div>
         <p>{step.description}</p>
         {index < steps.length - 1 && <footer><b>—</b> continued <i /> — dropped</footer>}
+        {index < steps.length - 1 && <div className="journey-connector" aria-label="Drop off: รอข้อมูล Google Analytics 4"><div><span>Drop off</span><b>—</b></div><i aria-hidden="true" /></div>}
       </article>)}
     </section>
 
