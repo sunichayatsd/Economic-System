@@ -1,7 +1,7 @@
 import { findEdition } from "@/lib/events";
 import { hasDb, readEventConfig, writeEventConfig } from "@/lib/db";
 
-const OBJECTIVES = new Set(["Awareness", "Engagement", "Traffic", "Sales"]);
+const OBJECTIVES = new Set(["Awareness", "Video View", "Engagement", "Traffic", "Sales"]);
 const CHANNELS = new Set(["Facebook", "Instagram", "PMAX", "YouTube"]);
 const defaults = () => [
   { id: crypto.randomUUID(), objective: "Awareness", channel: "Facebook", budget: 0 },

@@ -2,15 +2,22 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-const OBJECTIVES = ["Awareness", "Engagement", "Traffic", "Sales"];
+const OBJECTIVES = ["Awareness", "Video View", "Engagement", "Traffic", "Sales"];
+const OBJECTIVE_GROUPS = [
+  { label: "Awareness", objectives: ["Awareness", "Video View"] },
+  { label: "Engagement", objectives: ["Engagement"] },
+  { label: "Traffic", objectives: ["Traffic"] },
+  { label: "Sales", objectives: ["Sales"] },
+];
 const CHANNELS = ["Facebook", "Instagram", "PMAX", "YouTube"];
 const money = n => new Intl.NumberFormat("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const tokenText = value => String(value || "").toLowerCase().replace(/[\s_-]+/g, " ");
 
 function objectiveOf(row) {
   const text = tokenText(row.campaignName || row.adName || "");
+  if (/video view|videoview|vdo view/.test(text)) return "Video View";
   if (/awareness|aware|reach/.test(text)) return "Awareness";
-  if (/engagement|engage|thruplay|video view/.test(text)) return "Engagement";
+  if (/engagement|engage|thruplay/.test(text)) return "Engagement";
   if (/traffic|link click|click/.test(text)) return "Traffic";
   if (/sales|sale|conversion|purchase/.test(text)) return "Sales";
   return "";
@@ -70,10 +77,10 @@ export default function MediaPlan({ edition }) {
     }));
   }, [rows, spend]);
 
-  const objectiveTotals = useMemo(() => OBJECTIVES.map(objective => {
-    const objectiveRows = rows.filter(row => row.objective === objective);
+  const objectiveTotals = useMemo(() => OBJECTIVE_GROUPS.map(group => {
+    const objectiveRows = rows.filter(row => group.objectives.includes(row.objective));
     return {
-      objective,
+      objective: group.label,
       budget: objectiveRows.reduce((sum, row) => sum + (Number(row.budget) || 0), 0),
       spent: objectiveRows.reduce((sum, row) => sum + (actualByRow[row.id] || 0), 0),
     };
@@ -128,10 +135,10 @@ export default function MediaPlan({ edition }) {
       <div className="media-plan-table-wrap"><table className="media-plan-table">
         <thead><tr><th>Objective</th><th>Channel</th><th>Budget</th><th>Amount Spend</th><th>Remaining</th><th>Pacing</th><th aria-label="จัดการ" /></tr></thead>
         <tbody>
-          {OBJECTIVES.flatMap(objective => {
-            const objectiveRows = rows.filter(row => row.objective === objective);
+          {OBJECTIVE_GROUPS.flatMap(group => {
+            const objectiveRows = rows.filter(row => group.objectives.includes(row.objective));
             if (!objectiveRows.length) return [];
-            const subtotal = objectiveTotals.find(total => total.objective === objective);
+            const subtotal = objectiveTotals.find(total => total.objective === group.label);
             return [
               ...objectiveRows.map(row => {
                 const actual = actualByRow[row.id] || 0;
@@ -145,7 +152,7 @@ export default function MediaPlan({ edition }) {
                   <td><button type="button" className="media-plan-remove" onClick={() => removeRow(row.id)} aria-label="ลบแถว">×</button></td>
                 </tr>;
               }),
-              <tr className="media-plan-subtotal" key={`${objective}-total`}><td colSpan="2">{objective} Total</td><td>฿{money(subtotal.budget)}</td><td>฿{money(subtotal.spent)}</td><td>฿{money(subtotal.budget - subtotal.spent)}</td><td>{subtotal.budget ? `${(subtotal.spent / subtotal.budget * 100).toFixed(1)}%` : "—"}</td><td /></tr>,
+              <tr className="media-plan-subtotal" key={`${group.label}-total`}><td colSpan="2">{group.label} Total</td><td>฿{money(subtotal.budget)}</td><td>฿{money(subtotal.spent)}</td><td>฿{money(subtotal.budget - subtotal.spent)}</td><td>{subtotal.budget ? `${(subtotal.spent / subtotal.budget * 100).toFixed(1)}%` : "—"}</td><td /></tr>,
             ];
           })}
         </tbody>
