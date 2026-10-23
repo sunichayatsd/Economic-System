@@ -11,14 +11,15 @@ const presentation = [
 ];
 const num = value => Number(value || 0).toLocaleString("en-US");
 const initialConfig = edition => ({ propertyId: "", steps: [
-  { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}` },
+  { label: "Event page", event: "View", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}` },
   { label: "Filling the form", event: "Draft", path: "" },
   { label: "Waiting for payment", event: "WaitingPayment", path: "" },
   { label: "Purchase complete", event: "Completed", path: "" },
 ] });
 
 export default function CustomerJourney({ edition }) {
-  const [range, setRange] = useState([edition.start, edition.end]);
+  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  const [range, setRange] = useState([edition.start, edition.end < yesterday ? edition.end : yesterday]);
   const [config, setConfig] = useState(() => initialConfig(edition));
   const [report, setReport] = useState(null);
   const [integration, setIntegration] = useState({ loading: true, storage: false, directConfigured: false });
@@ -56,7 +57,7 @@ export default function CustomerJourney({ edition }) {
       const response = await fetch("/api/analytics", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: edition.slug, startDate: range[0], endDate: range[1] }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "ดึงข้อมูลไม่สำเร็จ");
-      setReport(data.report); setIntegration(current => ({ ...current, fetchedAt: data.fetchedAt })); setNote("อัปเดตข้อมูล Customer Journey แล้ว");
+      setReport(data.report); setRange([data.report.startDate, data.report.endDate]); setIntegration(current => ({ ...current, fetchedAt: data.fetchedAt })); setNote("อัปเดตข้อมูล Customer Journey แล้ว");
     } catch (error) { setNote(error.message || "ดึงข้อมูลไม่สำเร็จ"); } finally { setSaving(false); }
   }
 
@@ -88,21 +89,21 @@ export default function CustomerJourney({ edition }) {
     <section className="journey-grid" aria-label="Customer journey from event page to completed purchase">
       {cards.map((step, index) => {
         const next = cards[index + 1]?.stats;
-        const hasFunnel = step.stats?.funnelUsers !== null && step.stats?.funnelUsers !== undefined && next?.funnelUsers !== null && next?.funnelUsers !== undefined;
-        const currentUsers = hasFunnel ? step.stats.funnelUsers : null;
-        const nextUsers = hasFunnel ? next.funnelUsers : null;
-        const dropped = hasFunnel ? Math.max(0, currentUsers - nextUsers) : null;
+        const hasFunnel = Boolean(step.stats && next && step.stats.users >= next.users);
+        const currentUsers = hasFunnel ? step.stats.users : null;
+        const nextUsers = hasFunnel ? next.users : null;
+        const dropped = hasFunnel ? currentUsers - nextUsers : null;
         const dropRate = hasFunnel && currentUsers ? dropped / currentUsers : null;
         return <article className={`journey-step ${step.accent}`} key={step.label}>
           <div className="journey-preview">{step.imageUrl ? <img src={step.imageUrl} alt={`Touchpoint: ${step.title}`} /> : <><div className="preview-top" /><div className="preview-content"><i /><i /><i /></div><div className="preview-action">{step.action}</div></>}</div>
           <code>{step.path || "ไม่มี Page path filter"}</code><h3>{step.title}</h3>
-          <div className="journey-event"><b>{step.event}</b><div><span>{step.stats?.funnelUsers !== null && step.stats?.funnelUsers !== undefined ? "FUNNEL USERS" : "TOTAL USERS"}</span><strong>{step.stats ? num(step.stats.funnelUsers ?? step.stats.users) : "—"}</strong></div><div><span>EVENT COUNT</span><strong>{step.stats ? num(step.stats.count) : "—"}</strong></div></div>
+          <div className="journey-event"><b>{step.event}</b><div><span>ผลรวม USERS รายวัน</span><strong>{step.stats ? num(step.stats.users) : "—"}</strong></div><div><span>EVENT COUNT</span><strong>{step.stats ? num(step.stats.count) : "—"}</strong></div></div>
           <p>{step.description}</p>
           {index < cards.length - 1 && <><footer>{hasFunnel ? <><b>{((nextUsers / Math.max(1, currentUsers)) * 100).toFixed(1)}%</b> continued <i /> {num(dropped)} dropped</> : <>— continued <i /> — dropped</>}</footer><div className="journey-connector" aria-label="Drop off"><div><span>Drop off</span><b>{dropRate === null ? "—" : `${(dropRate * 100).toFixed(1)}%`}</b></div><i aria-hidden="true" /></div></>}
         </article>;
       })}
     </section>
 
-    <section className="journey-guide card"><h3>ระบบนี้ทำอะไรได้</h3><p>เก็บ GA4 Property ID, Page path และ event ของแต่ละ Event ไว้บนเว็บ จากนั้นดึง Total users และ Event count ตามวันที่เลือกโดยตรงจาก GA4. เมื่อ Funnel API ตอบกลับ ระบบจะคำนวณ continued และ Drop off ตามลำดับผู้ใช้จริง</p></section>
+    <section className="journey-guide card"><h3>ระบบนี้ทำอะไรได้</h3><p>ดึง custom events ของ Zipevent ได้แก่ View, Draft, WaitingPayment และ Completed จาก GA4 Property ที่ตั้งไว้ แล้วรวม totalUsers รายวันและ eventCount ตามช่วงวันที่ที่เลือก โดย Completed ใช้วิเคราะห์ขั้นตอนการซื้อเท่านั้น ไม่ใช่ยอดขายบัตรจริง</p></section>
   </main>;
 }
