@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const presentation = [
   { title: "Event page", description: "users viewed", accent: "blue", action: "Buy ticket", imageUrl: "/journey/economic-2026/event-page.png" },
@@ -25,6 +25,8 @@ export default function CustomerJourney({ edition }) {
   const [integration, setIntegration] = useState({ loading: true, storage: false, directConfigured: false });
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const autoRequestRef = useRef("");
+  const requestIdRef = useRef(0);
   const reportRangeMatches = Boolean(report && report.startDate === range[0] && report.endDate === range[1]);
 
   useEffect(() => {
@@ -33,12 +35,14 @@ export default function CustomerJourney({ edition }) {
       const defaults = initialConfig(edition);
       setConfig({ ...defaults, ...data.config, steps: defaults.steps.map((step, index) => ({ ...step, ...(data.config?.steps?.[index] || {}) })) });
       setReport(data.report || null);
+      if (data.report?.startDate && data.report?.endDate) setRange([data.report.startDate, data.report.endDate]);
       setIntegration({ loading: false, storage: data.storage, directConfigured: data.directConfigured, fetchedAt: data.fetchedAt });
     }).catch(error => { setIntegration({ loading: false, storage: false, directConfigured: false }); setNote(error.message || "โหลดการตั้งค่า GA4 ไม่สำเร็จ"); });
   }, [edition]);
 
   const cards = useMemo(() => presentation.map((item, index) => ({ ...config.steps[index], ...item, stats: reportRangeMatches ? report?.steps?.[index] || null : null })), [config, report, reportRangeMatches]);
   const editStep = (index, key, value) => setConfig(current => ({ ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, [key]: value } : step) }));
+  const changeRange = nextRange => { requestIdRef.current += 1; setRange(nextRange); setNote(""); };
 
   async function saveConfig() {
     setSaving(true); setNote("");
@@ -51,16 +55,27 @@ export default function CustomerJourney({ edition }) {
     } catch (error) { setNote(error.message || "บันทึกไม่สำเร็จ"); return false; } finally { setSaving(false); }
   }
 
-  async function refreshGa4() {
-    if (!(await saveConfig())) return;
+  async function refreshGa4(saveFirst = true) {
+    if (saveFirst && !(await saveConfig())) return;
+    const requestId = ++requestIdRef.current;
+    const requestedRange = [...range];
     setSaving(true); setNote("");
     try {
-      const response = await fetch("/api/analytics", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: edition.slug, startDate: range[0], endDate: range[1] }) });
+      const response = await fetch("/api/analytics", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: edition.slug, startDate: requestedRange[0], endDate: requestedRange[1] }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "ดึงข้อมูลไม่สำเร็จ");
+      if (requestId !== requestIdRef.current) return;
       setReport(data.report); setRange([data.report.startDate, data.report.endDate]); setIntegration(current => ({ ...current, fetchedAt: data.fetchedAt })); setNote("อัปเดตข้อมูล Customer Journey แล้ว");
-    } catch (error) { setNote(error.message || "ดึงข้อมูลไม่สำเร็จ"); } finally { setSaving(false); }
+    } catch (error) { if (requestId === requestIdRef.current) setNote(error.message || "ดึงข้อมูลไม่สำเร็จ"); } finally { if (requestId === requestIdRef.current) setSaving(false); }
   }
+
+  useEffect(() => {
+    const key = `${range[0]}:${range[1]}`;
+    const validRange = /^\d{4}-\d{2}-\d{2}$/.test(range[0]) && /^\d{4}-\d{2}-\d{2}$/.test(range[1]) && range[0] <= range[1];
+    if (integration.loading || !integration.directConfigured || !integration.storage || !validRange || reportRangeMatches || autoRequestRef.current === key) return;
+    const timer = setTimeout(() => { autoRequestRef.current = key; refreshGa4(false); }, 650);
+    return () => clearTimeout(timer);
+  }, [range, integration.loading, integration.directConfigured, integration.storage, reportRangeMatches]);
 
   return <main className="wrap journey-page">
     <div className="journey-head">
@@ -69,10 +84,10 @@ export default function CustomerJourney({ edition }) {
     </div>
 
     <section className="journey-controls" aria-label="ตัวกรอง Customer Journey">
-      <label>ช่วงเวลา ตั้งแต่ <input type="date" value={range[0]} onChange={event => setRange([event.target.value, range[1]])} /></label>
-      <label>ถึง <input type="date" value={range[1]} onChange={event => setRange([range[0], event.target.value])} /></label>
-      <button className="primary" disabled={saving || !integration.directConfigured} onClick={refreshGa4}>{saving ? "กำลังอัปเดต…" : "อัปเดตจาก GA4"}</button>
-      <small>{!integration.directConfigured ? "รอเชื่อม Google Service Account" : report && !reportRangeMatches ? `เปลี่ยนช่วงวันที่แล้ว — กดอัปเดต (ตัวเลขเดิมคือ ${report.startDate} ถึง ${report.endDate})` : report ? `ข้อมูลช่วง ${report.startDate} ถึง ${report.endDate}` : "ดึงข้อมูลโดยตรงจาก GA4 Data API"}</small>
+      <label>ช่วงเวลา ตั้งแต่ <input type="date" value={range[0]} onChange={event => changeRange([event.target.value, range[1]])} /></label>
+      <label>ถึง <input type="date" value={range[1]} onChange={event => changeRange([range[0], event.target.value])} /></label>
+      <button className="primary" disabled={saving || !integration.directConfigured} onClick={() => refreshGa4(true)}>{saving ? "กำลังอัปเดต…" : "อัปเดตจาก GA4"}</button>
+      <small>{!integration.directConfigured ? "รอเชื่อม Google Service Account" : saving ? "กำลังดึง Closed Funnel ตามช่วงวันที่ที่เลือก…" : report && !reportRangeMatches ? "เปลี่ยนช่วงวันที่แล้ว — ระบบกำลังอัปเดตอัตโนมัติ" : report ? `ข้อมูลช่วง ${report.startDate} ถึง ${report.endDate} · บันทึกไว้แล้ว` : "ดึงข้อมูลโดยตรงจาก GA4 Data API"}</small>
     </section>
 
     <details className="ga4-setup card" open={!config.propertyId}>
