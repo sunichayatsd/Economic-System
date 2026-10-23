@@ -4,17 +4,17 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 const presentation = [
-  { title: "Event page", description: "users viewed", accent: "blue", action: "Buy ticket" },
-  { title: "Filling the form", description: "users started an order", accent: "violet", action: "Continue" },
-  { title: "Waiting for payment", description: "users saw the QR", accent: "amber", action: "Pay now" },
-  { title: "Purchase complete", description: "users paid", accent: "green", action: "Complete" },
+  { title: "Event page", description: "users viewed", accent: "blue", action: "Buy ticket", imageUrl: "/journey/economic-2026/event-page.png" },
+  { title: "Filling the form", description: "users started an order", accent: "violet", action: "Continue", imageUrl: "/journey/economic-2026/filling-form.png" },
+  { title: "Waiting for payment", description: "users saw the QR", accent: "amber", action: "Pay now", imageUrl: "/journey/economic-2026/waiting-payment.png" },
+  { title: "Purchase complete", description: "users paid", accent: "green", action: "Complete", imageUrl: "/journey/economic-2026/purchase-complete.png" },
 ];
 const num = value => Number(value || 0).toLocaleString("en-US");
 const initialConfig = edition => ({ propertyId: "", steps: [
-  { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}`, imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/event-page.png" : "" },
-  { label: "Filling the form", event: "Draft", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/filling-form.png" : "" },
-  { label: "Waiting for payment", event: "WaitingPayment", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/waiting-payment.png" : "" },
-  { label: "Purchase complete", event: "Completed", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/purchase-complete.png" : "" },
+  { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}` },
+  { label: "Filling the form", event: "Draft", path: "" },
+  { label: "Waiting for payment", event: "WaitingPayment", path: "" },
+  { label: "Purchase complete", event: "Completed", path: "" },
 ] });
 
 export default function CustomerJourney({ edition }) {
@@ -35,7 +35,7 @@ export default function CustomerJourney({ edition }) {
     }).catch(error => { setIntegration({ loading: false, storage: false, directConfigured: false }); setNote(error.message || "โหลดการตั้งค่า GA4 ไม่สำเร็จ"); });
   }, [edition]);
 
-  const cards = useMemo(() => presentation.map((item, index) => ({ ...item, ...config.steps[index], stats: report?.steps?.[index] || null })), [config, report]);
+  const cards = useMemo(() => presentation.map((item, index) => ({ ...config.steps[index], ...item, stats: report?.steps?.[index] || null })), [config, report]);
   const editStep = (index, key, value) => setConfig(current => ({ ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, [key]: value } : step) }));
 
   async function saveConfig() {
@@ -78,7 +78,7 @@ export default function CustomerJourney({ edition }) {
       <p className="muted small">Property ID และชื่อ event จะถูกบันทึกแยกตาม Event เพื่อใช้สร้าง Dashboard ครั้งถัดไปได้เร็วขึ้น</p>
       <div className="ga4-fields">
         <label>GA4 Property ID<input className="text" inputMode="numeric" value={config.propertyId} onChange={event => setConfig(current => ({ ...current, propertyId: event.target.value }))} placeholder="เช่น 123456789" /></label>
-        {config.steps.map((step, index) => <fieldset key={step.label}><legend>{step.label}</legend><label>Event name<input className="text" value={step.event} onChange={event => editStep(index, "event", event.target.value)} /></label><label>Page path {index === 0 ? "(คั่นหลาย path ด้วย ,)" : "(ถ้ามี)"}<input className="text" value={step.path} onChange={event => editStep(index, "path", event.target.value)} placeholder={index === 0 ? "/e/event-one, /e/event-two" : "เว้นว่างได้"} /></label><label className="ga4-image-url">ภาพ Touchpoint (URL)<input className="text" value={step.imageUrl || ""} onChange={event => editStep(index, "imageUrl", event.target.value)} placeholder="https://… หรือ /journey/..." /></label></fieldset>)}
+        {config.steps.map((step, index) => <fieldset key={step.label}><legend>{step.label}</legend><label>Event name<input className="text" value={step.event} onChange={event => editStep(index, "event", event.target.value)} /></label><label>Page path {index === 0 ? "(คั่นหลาย path ด้วย ,)" : "(ใช้แสดงชื่อหน้า ไม่ใช้กรอง Event)"}<input className="text" value={step.path} onChange={event => editStep(index, "path", event.target.value)} placeholder={index === 0 ? "/e/event-one, /e/event-two" : "เว้นว่างได้"} /></label></fieldset>)}
       </div>
       <div className="ga4-actions"><button className="primary" disabled={saving || !integration.storage} onClick={saveConfig}>{saving ? "กำลังบันทึก…" : "บันทึก Setup"}</button><span className={note.includes("ไม่") || note.includes("สำเร็จ") ? "err" : "muted"}>{note || (integration.loading ? "กำลังตรวจสถานะ…" : integration.storage ? "การตั้งค่านี้จะถูกเก็บในฐานข้อมูล" : "ยังไม่พบฐานข้อมูลสำหรับบันทึก Setup")}</span></div>
     </details>

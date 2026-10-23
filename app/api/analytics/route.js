@@ -5,10 +5,10 @@ import { hasDb, readAnalyticsCache, readAnalyticsConfig, writeAnalyticsCache, wr
 const defaultConfig = edition => ({
   propertyId: "",
   steps: [
-    { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}`, imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/event-page.png" : "" },
-    { label: "Filling the form", event: "Draft", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/filling-form.png" : "" },
-    { label: "Waiting for payment", event: "WaitingPayment", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/waiting-payment.png" : "" },
-    { label: "Purchase complete", event: "Completed", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/purchase-complete.png" : "" },
+    { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}` },
+    { label: "Filling the form", event: "Draft", path: "" },
+    { label: "Waiting for payment", event: "WaitingPayment", path: "" },
+    { label: "Purchase complete", event: "Completed", path: "" },
   ],
 });
 
@@ -21,7 +21,6 @@ function cleanConfig(input, edition) {
       label: fallbackStep.label,
       event: String(inputSteps[index]?.event || fallbackStep.event).trim().slice(0, 100),
       path: String(inputSteps[index]?.path || "").trim().slice(0, 300),
-      imageUrl: String(inputSteps[index]?.imageUrl || fallbackStep.imageUrl || "").trim().slice(0, 500),
     })),
   };
 }
