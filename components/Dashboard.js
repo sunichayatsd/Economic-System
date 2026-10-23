@@ -420,17 +420,11 @@ function OverallPerformance({ view, ads, rule }) {
   const reach = delivery.reach || 0;
   const engagement = delivery.engagement || 0;
   const traffic = delivery.linkClicks || 0;
-  const relative = impressions ? [100, Math.max(80, Math.round((reach / impressions) * 100)), Math.max(62, Math.round((engagement / impressions) * 100)), Math.max(45, Math.round((traffic / impressions) * 120)), Math.max(32, Math.round((paid / impressions) * 18000))] : [100, 88, 74, 60, 44];
   const ctaLabel = rule === "simple" ? "ยอดบัตรผ่าน CTA แอด" : "ยอดบัตรที่จับคู่กับแอด";
   return <section className="performance card">
     <div className="performance-head"><div><h2>Overall Performance</h2><p>Funnel ที่บอกชัดว่าแต่ละ metric อยู่ขั้นไหน ตั้งแต่การมองเห็นจนถึงยอดขาย</p></div><span className="performance-range">SELECTED RANGE</span></div>
     <div className="performance-layout">
-      <div className="css-funnel" aria-label="ภาพรวมเส้นทางยอดขาย">
-        <div className="funnel-stage funnel-visibility" style={{ "--funnel-width": `${relative[0]}%` }}><span>1 · VISIBILITY — การมองเห็น</span><div className="funnel-metrics"><b>Imp {impressions ? num(impressions) : "—"}</b><b>Reach {reach ? num(reach) : "—"}</b></div><small>Meta Ads · Reach เป็นยอดคนไม่ซ้ำ</small></div>
-        <div className="funnel-stage funnel-engagement" style={{ "--funnel-width": `${relative[1]}%` }}><span>2 · ENGAGEMENT — การมีส่วนร่วม</span><div className="funnel-metrics"><b>{engagement ? num(engagement) : "—"}</b></div><small>Post engagement จาก Meta Ads</small></div>
-        <div className="funnel-stage funnel-traffic" style={{ "--funnel-width": `${relative[2]}%` }}><span>3 · TRAFFIC — การเข้าเว็บไซต์</span><div className="funnel-metrics"><b>{traffic ? num(traffic) : "—"} คลิก</b></div><small>Link clicks จาก Meta Ads</small></div>
-        <div className="funnel-stage funnel-sales" style={{ "--funnel-width": `${relative[3]}%` }}><span>4 · SALES — ยอดขายบัตร</span><div className="funnel-metrics"><b>{num(paid)} Paid Ticket</b><b>{num(cta)} CTA</b></div><small>{baht(view.sumV(view.inR))} Revenue · {ctaLabel}</small></div>
-      </div>
+      <FunnelGraphic impressions={impressions} reach={reach} engagement={engagement} traffic={traffic} paid={paid} cta={cta} revenue={view.sumV(view.inR)} />
       <div className="performance-metric-list">
         <PerformanceMetric level="visibility" label="Impression" value={impressions} source="Meta Ads" />
         <PerformanceMetric level="visibility" label="Reach" value={reach} source="Meta Ads · คนไม่ซ้ำ" />
@@ -445,4 +439,19 @@ function OverallPerformance({ view, ads, rule }) {
 
 function PerformanceMetric({ level, label, value, source }) {
   return <div className={`performance-metric ${level}`}><span>{label}</span><b>{value ? num(value) : "—"}</b><small>{source}</small></div>;
+}
+
+function FunnelGraphic({ impressions, reach, engagement, traffic, paid, cta, revenue }) {
+  const stages = [
+    { points: "18,10 582,10 470,108 130,108", color: "#9295cc", title: "VISIBILITY", value: `Imp ${impressions ? num(impressions) : "—"} · Reach ${reach ? num(reach) : "—"}`, y: 54 },
+    { points: "130,108 470,108 390,206 210,206", color: "#67cdd0", title: "ENGAGEMENT", value: engagement ? num(engagement) : "—", y: 152 },
+    { points: "210,206 390,206 335,294 265,294", color: "#f39a9d", title: "TRAFFIC", value: `${traffic ? num(traffic) : "—"} clicks`, y: 246 },
+    { points: "265,294 335,294 310,360 290,360", color: "#90c4a5", title: "SALES", value: `${num(paid)} Paid · ${num(cta)} CTA`, y: 326 },
+  ];
+  return <div className="funnel-svg" aria-label="ภาพรวมเส้นทางยอดขาย">
+    <svg viewBox="0 0 600 395" role="img" aria-label="Funnel จาก Visibility ถึง Sales">
+      {stages.map(stage => <g key={stage.title}><polygon points={stage.points} fill={stage.color} /><text className="funnel-svg-title" x="300" y={stage.y} textAnchor="middle">{stage.title}</text><text className="funnel-svg-value" x="300" y={stage.y + 25} textAnchor="middle">{stage.value}</text></g>)}
+      <text className="funnel-svg-revenue" x="300" y="382" textAnchor="middle">{baht(revenue)} Revenue</text>
+    </svg>
+  </div>;
 }
