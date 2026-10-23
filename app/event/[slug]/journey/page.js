@@ -8,7 +8,7 @@ export default function CustomerJourneyPage({ params }) {
   if (!edition) notFound();
 
   return <>
-    <TopBar title={`${editionTitle(edition)} · Customer Journey`} back />
+    <TopBar title={`${editionTitle(edition)} · Customer Journey`} back wide />
     <CustomerJourney edition={edition} />
   </>;
 }
