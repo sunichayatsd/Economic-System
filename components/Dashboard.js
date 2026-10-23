@@ -114,6 +114,9 @@ export default function Dashboard({ edition }) {
   const [uploadedHours, setUploadedHours] = useState(null);
   const [saveNote, setSaveNote] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [projectCode, setProjectCode] = useState(edition.prefix || "");
+  const [projectCodeNote, setProjectCodeNote] = useState("");
+  const [savingProjectCode, setSavingProjectCode] = useState(false);
 
   // The last upload comes back from the database, so the page survives a reload.
   useEffect(() => {
@@ -131,6 +134,26 @@ export default function Dashboard({ edition }) {
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edition.slug]);
+
+  useEffect(() => {
+    fetch(`/api/event-config?slug=${edition.slug}`).then(r => r.json()).then(d => {
+      if (d.error) throw new Error(d.error);
+      setProjectCode(d.config?.projectCode || edition.prefix || "");
+    }).catch(e => setProjectCodeNote(e.message));
+  }, [edition.slug, edition.prefix]);
+
+  async function saveProjectCode() {
+    setProjectCodeNote(""); setSavingProjectCode(true);
+    try {
+      const response = await fetch("/api/event-config", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: edition.slug, projectCode }) });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      setProjectCode(data.config.projectCode); setAds(null);
+      setProjectCodeNote("บันทึกแล้ว · กดอัปเดตยอด Ads เพื่อดึงโปรเจกต์นี้");
+    } catch (e) { setProjectCodeNote(e.message); }
+    finally { setSavingProjectCode(false); }
+  }
 
   async function onFile(f) {
     if (!f) return;
@@ -271,11 +294,18 @@ export default function Dashboard({ edition }) {
           <span className="sync-kicker">2 · ค่าโฆษณา</span>
           <h2>อัปเดตยอด Ads จาก Supermetrics</h2>
           <p>ดึงยอดค่าใช้จ่ายล่าสุดของแคมเปญ Event จากทุก Ads Manager ที่ตั้งค่าไว้</p>
+          <div className="project-code-setup">
+            <label>QU / Project Code
+              <input className="text" value={projectCode} placeholder="เช่น TSD2615 หรือ QU-1234" onChange={e => setProjectCode(e.target.value)} />
+            </label>
+            <button type="button" className="ghost" disabled={savingProjectCode} onClick={saveProjectCode}>{savingProjectCode ? "กำลังบันทึก…" : "บันทึกรหัส"}</button>
+          </div>
+          {projectCodeNote && <small className={projectCodeNote.includes("บันทึกแล้ว") ? "muted" : "err"}>{projectCodeNote}</small>}
           <button className="primary" disabled={refreshing} onClick={() => loadAds(true)}>
             {refreshing ? "กำลังอัปเดตจาก Supermetrics…" : "อัปเดตยอด Ads"}
           </button>
           <small className={adsErr ? "err" : "muted"}>{adsErr ? "⚠ " + adsErr : ads
-            ? <>ข้อมูล {ads.start} – {ads.end} · อัปเดต {new Date(ads.fetchedAt).toLocaleString("th-TH")}{ads.warning ? " · " + ads.warning : ""}{edition.spendSources?.length && !ads.spendComplete ? " · รอข้อมูลบาง Ads Manager" : ""}</>
+            ? <>โปรเจกต์ {ads.projectCode || projectCode} · ข้อมูล {ads.start} – {ads.end} · อัปเดต {new Date(ads.fetchedAt).toLocaleString("th-TH")}{ads.warning ? " · " + ads.warning : ""}{edition.spendSources?.length && !ads.spendComplete ? " · รอข้อมูลบาง Ads Manager" : ""}</>
             : "กดปุ่มเพื่อดึงยอดล่าสุดจาก Supermetrics"}</small>
         </div>
       </section>
