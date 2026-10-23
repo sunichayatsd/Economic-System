@@ -11,10 +11,10 @@ const presentation = [
 ];
 const num = value => Number(value || 0).toLocaleString("en-US");
 const initialConfig = edition => ({ propertyId: "", steps: [
-  { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}` },
-  { label: "Filling the form", event: "Draft", path: "" },
-  { label: "Waiting for payment", event: "WaitingPayment", path: "" },
-  { label: "Purchase complete", event: "Completed", path: "" },
+  { label: "Event page", event: "page_view", path: `/e/${edition.series === "economic" ? "economic-forum" : edition.series}-${edition.year}`, imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/event-page.png" : "" },
+  { label: "Filling the form", event: "Draft", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/filling-form.png" : "" },
+  { label: "Waiting for payment", event: "WaitingPayment", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/waiting-payment.png" : "" },
+  { label: "Purchase complete", event: "Completed", path: "", imageUrl: edition.slug === "economic-2026" ? "/journey/economic-2026/purchase-complete.png" : "" },
 ] });
 
 export default function CustomerJourney({ edition }) {
@@ -28,7 +28,8 @@ export default function CustomerJourney({ edition }) {
   useEffect(() => {
     fetch(`/api/analytics?slug=${edition.slug}`).then(response => response.json()).then(data => {
       if (data.error) throw new Error(data.error);
-      setConfig(data.config || initialConfig(edition));
+      const defaults = initialConfig(edition);
+      setConfig({ ...defaults, ...data.config, steps: defaults.steps.map((step, index) => ({ ...step, ...(data.config?.steps?.[index] || {}) })) });
       setReport(data.report || null);
       setIntegration({ loading: false, storage: data.storage, directConfigured: data.directConfigured, fetchedAt: data.fetchedAt });
     }).catch(error => { setIntegration({ loading: false, storage: false, directConfigured: false }); setNote(error.message || "โหลดการตั้งค่า GA4 ไม่สำเร็จ"); });
@@ -77,7 +78,7 @@ export default function CustomerJourney({ edition }) {
       <p className="muted small">Property ID และชื่อ event จะถูกบันทึกแยกตาม Event เพื่อใช้สร้าง Dashboard ครั้งถัดไปได้เร็วขึ้น</p>
       <div className="ga4-fields">
         <label>GA4 Property ID<input className="text" inputMode="numeric" value={config.propertyId} onChange={event => setConfig(current => ({ ...current, propertyId: event.target.value }))} placeholder="เช่น 123456789" /></label>
-        {config.steps.map((step, index) => <fieldset key={step.label}><legend>{step.label}</legend><label>Event name<input className="text" value={step.event} onChange={event => editStep(index, "event", event.target.value)} /></label><label>Page path {index === 0 ? "(ใช้กรองหน้า Event)" : "(ถ้ามี)"}<input className="text" list={index === 0 ? "event-path-options" : undefined} value={step.path} onChange={event => editStep(index, "path", event.target.value)} placeholder={index === 0 ? "/e/your-event" : "เว้นว่างได้"} /></label></fieldset>)}
+        {config.steps.map((step, index) => <fieldset key={step.label}><legend>{step.label}</legend><label>Event name<input className="text" value={step.event} onChange={event => editStep(index, "event", event.target.value)} /></label><label>Page path {index === 0 ? "(ใช้กรองหน้า Event)" : "(ถ้ามี)"}<input className="text" list={index === 0 ? "event-path-options" : undefined} value={step.path} onChange={event => editStep(index, "path", event.target.value)} placeholder={index === 0 ? "/e/your-event" : "เว้นว่างได้"} /></label><label className="ga4-image-url">ภาพ Touchpoint (URL)<input className="text" value={step.imageUrl || ""} onChange={event => editStep(index, "imageUrl", event.target.value)} placeholder="https://… หรือ /journey/..." /></label></fieldset>)}
       </div>
       <div className="ga4-actions"><button className="primary" disabled={saving || !integration.storage} onClick={saveConfig}>{saving ? "กำลังบันทึก…" : "บันทึก Setup"}</button><span className={note.includes("ไม่") || note.includes("สำเร็จ") ? "err" : "muted"}>{note || (integration.loading ? "กำลังตรวจสถานะ…" : integration.storage ? "การตั้งค่านี้จะถูกเก็บในฐานข้อมูล" : "ยังไม่พบฐานข้อมูลสำหรับบันทึก Setup")}</span></div>
     </details>
@@ -95,7 +96,7 @@ export default function CustomerJourney({ edition }) {
         const dropped = hasFunnel ? Math.max(0, currentUsers - nextUsers) : null;
         const dropRate = hasFunnel && currentUsers ? dropped / currentUsers : null;
         return <article className={`journey-step ${step.accent}`} key={step.label}>
-          <div className="journey-preview" aria-hidden="true"><div className="preview-top" /><div className="preview-content"><i /><i /><i /></div><div className="preview-action">{step.action}</div></div>
+          <div className="journey-preview">{step.imageUrl ? <img src={step.imageUrl} alt={`Touchpoint: ${step.title}`} /> : <><div className="preview-top" /><div className="preview-content"><i /><i /><i /></div><div className="preview-action">{step.action}</div></>}</div>
           <code>{step.path || "ไม่มี Page path filter"}</code><h3>{step.title}</h3>
           <div className="journey-event"><b>{step.event}</b><div><span>TOTAL USERS</span><strong>{step.stats ? num(step.stats.users) : "—"}</strong></div><div><span>EVENT COUNT</span><strong>{step.stats ? num(step.stats.count) : "—"}</strong></div></div>
           <p>{step.description}</p>
