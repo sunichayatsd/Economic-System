@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-const OBJECTIVES = ["Awareness", "Video View", "Engagement", "Traffic", "Sales"];
+const OBJECTIVES = ["Awareness", "Video View", "Engagement", "Traffic", "Sales", "กันงบ"];
 const OBJECTIVE_GROUPS = [
   { label: "Awareness", objectives: ["Awareness", "Video View"] },
   { label: "Engagement", objectives: ["Engagement"] },
   { label: "Traffic", objectives: ["Traffic"] },
   { label: "Sales", objectives: ["Sales"] },
+  { label: "กันงบ", objectives: ["กันงบ"] },
 ];
 const CHANNELS = ["Facebook", "Instagram", "PMAX", "YouTube"];
 const money = n => new Intl.NumberFormat("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
@@ -89,6 +90,11 @@ export default function MediaPlan({ edition }) {
   const allocatedSpend = objectiveTotals.reduce((sum, row) => sum + row.spent, 0);
 
   const updateRow = (id, key, value) => setRows(current => current.map(row => row.id === id ? { ...row, [key]: value } : row));
+  const updateObjective = (row, objective) => setRows(current => current.map(item => item.id === row.id ? {
+    ...item,
+    objective,
+    channel: objective === "กันงบ" ? "" : (CHANNELS.includes(item.channel) ? item.channel : "Facebook"),
+  } : item));
   const addRow = () => setRows(current => [...current, { id: crypto.randomUUID(), objective: "Awareness", channel: "Facebook", budget: 0 }]);
   const removeRow = id => setRows(current => current.length > 1 ? current.filter(row => row.id !== id) : current);
 
@@ -144,8 +150,11 @@ export default function MediaPlan({ edition }) {
                 const actual = actualByRow[row.id] || 0;
                 const budget = Number(row.budget) || 0;
                 return <tr key={row.id}>
-                  <td><select value={row.objective} onChange={event => updateRow(row.id, "objective", event.target.value)}>{OBJECTIVES.map(value => <option key={value}>{value}</option>)}</select></td>
-                  <td><select value={row.channel} onChange={event => updateRow(row.id, "channel", event.target.value)}>{CHANNELS.map(value => <option key={value}>{value}</option>)}</select></td>
+                  <td><select value={row.objective} onChange={event => updateObjective(row, event.target.value)}>{OBJECTIVES.map(value => <option key={value}>{value}</option>)}</select></td>
+                  <td>{row.objective === "กันงบ"
+                    ? <input className="media-plan-label-input" type="text" maxLength="120" placeholder="ระบุว่างบค่าอะไร" value={row.channel} onChange={event => updateRow(row.id, "channel", event.target.value)} />
+                    : <select value={row.channel} onChange={event => updateRow(row.id, "channel", event.target.value)}>{CHANNELS.map(value => <option key={value}>{value}</option>)}</select>}
+                  </td>
                   <td><input type="number" min="0" step="100" value={row.budget} onChange={event => updateRow(row.id, "budget", event.target.value)} /></td>
                   <td>฿{money(actual)}</td><td className={budget - actual < 0 ? "over-budget" : ""}>฿{money(budget - actual)}</td>
                   <td className={budget && actual / budget > 1 ? "over-budget" : ""}>{budget ? `${(actual / budget * 100).toFixed(1)}%` : "—"}</td>
