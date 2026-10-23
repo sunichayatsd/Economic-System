@@ -282,7 +282,7 @@ export default function Dashboard({ edition }) {
 
       <div className="pivot-entry">
         <Link className="pivot-link" href={`/event/${edition.slug}/pivot`}>เปิด Pivot Table <span aria-hidden="true">→</span></Link>
-        <a className="pivot-link" href="#customer-journey">Customer Journey <span aria-hidden="true">→</span></a>
+        <Link className="pivot-link" href={`/event/${edition.slug}/journey`}>Customer Journey <span aria-hidden="true">→</span></Link>
       </div>
 
       {view && (
