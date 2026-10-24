@@ -12,6 +12,13 @@ const OBJECTIVE_GROUPS = [
   { label: "กันงบ", objectives: ["กันงบ"] },
 ];
 const CHANNELS = ["Facebook", "Instagram", "Google PMAX", "Google Search", "Google Display", "Google Demand Gen", "YouTube"];
+const GOOGLE_CHANNEL_OBJECTIVES = {
+  "Google PMAX": "Sales",
+  "Google Search": "Sales",
+  "Google Display": "Awareness",
+  "Google Demand Gen": "Awareness",
+  YouTube: "Video View",
+};
 const money = n => new Intl.NumberFormat("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const tokenText = value => String(value || "").toLowerCase().replace(/[\s_-]+/g, " ");
 
@@ -66,7 +73,9 @@ export default function MediaPlan({ edition }) {
     const grouped = {};
     let unclassified = 0;
     for (const item of ads?.spend || []) {
-      const objective = objectiveOf(item), channel = channelOf(item), cost = Number(item.cost) || 0;
+      const channel = channelOf(item);
+      const objective = objectiveOf(item) || GOOGLE_CHANNEL_OBJECTIVES[channel] || "";
+      const cost = Number(item.cost) || 0;
       if (!objective || !channel) { unclassified += cost; continue; }
       grouped[`${objective}|${channel}`] = (grouped[`${objective}|${channel}`] || 0) + cost;
     }
