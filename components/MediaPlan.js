@@ -51,7 +51,7 @@ export default function MediaPlan({ edition }) {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/media-plan?slug=${encodeURIComponent(edition.slug)}`).then(r => r.json()),
+      fetch(`/api/media-plan?slug=${encodeURIComponent(edition.slug)}`, { cache: "no-store" }).then(r => r.json()),
       fetch(`/api/ads?slug=${encodeURIComponent(edition.slug)}`).then(r => r.json()),
     ]).then(([plan, adData]) => {
       if (plan.error) throw new Error(plan.error);

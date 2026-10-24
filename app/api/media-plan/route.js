@@ -1,6 +1,9 @@
 import { findEdition } from "@/lib/events";
 import { hasDb, readEventConfig, writeEventConfig } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const OBJECTIVES = new Set(["Awareness", "Video View", "Engagement", "Traffic", "Sales", "กันงบ"]);
 const CHANNELS = new Set(["Facebook", "Instagram", "Google PMAX", "Google Search", "Google Display", "Google Demand Gen", "YouTube"]);
 const defaults = () => [
@@ -30,7 +33,10 @@ export async function GET(req) {
   const saved = await readEventConfig(slug);
   const plan = saved?.config?.mediaPlan;
   const rows = cleanRows(plan?.rows);
-  return Response.json({ storage: hasDb(), rows: rows.length ? rows : defaults(), updatedAt: plan?.updatedAt || null });
+  return Response.json(
+    { storage: hasDb(), rows: rows.length ? rows : defaults(), updatedAt: plan?.updatedAt || null },
+    { headers: { "Cache-Control": "no-store, max-age=0" } },
+  );
 }
 
 export async function POST(req) {
