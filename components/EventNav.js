@@ -4,6 +4,7 @@ const destinations = [
   ["pivot", "เปิด Pivot Table"],
   ["journey", "Customer Journey"],
   ["media-plan", "Media Plan"],
+  ["ads-suggestion", "Ads Suggestion"],
   ["total-tickets", "Total Tickets"],
   ["social-listening", "Social Listening"],
 ];

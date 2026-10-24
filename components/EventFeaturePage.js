@@ -12,6 +12,16 @@ const FEATURES = {
       ["KPI & Pacing", "ติดตามเป้าหมายและการใช้งบเทียบกับแผน"],
     ],
   },
+  "ads-suggestion": {
+    kicker: "ADS INTELLIGENCE",
+    title: "Ads Suggestion",
+    description: "พื้นที่สรุปข้อสังเกตและคำแนะนำจากผลโฆษณา ยอดขาย และ Media Plan ของ Event นี้",
+    sections: [
+      ["Performance Signals", "ตรวจสัญญาณสำคัญจาก Spend, Pacing และผลลัพธ์ของแต่ละช่องทาง"],
+      ["Budget Suggestion", "เสนอแนวทางจัดสรรงบโดยอ้างอิงข้อมูลจริงและงบคงเหลือ"],
+      ["Action Review", "แสดงคำแนะนำให้ตรวจสอบก่อนนำไปปรับ Campaign จริง"],
+    ],
+  },
   "total-tickets": {
     kicker: "TICKET PERFORMANCE",
     title: "Total Tickets",
