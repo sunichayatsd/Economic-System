@@ -108,6 +108,8 @@ export default function MediaPlan({ edition }) {
   const totalBudget = rows.reduce((sum, row) => sum + (Number(row.budget) || 0), 0);
   const allocationGap = campaignBudget - totalBudget;
   const allocatedSpend = objectiveTotals.reduce((sum, row) => sum + row.spent, 0);
+  const funnelTotals = objectiveTotals.filter(total => total.objective !== "กันงบ");
+  const reserveTotal = objectiveTotals.find(total => total.objective === "กันงบ")?.budget || 0;
 
   const updateRow = (id, key, value) => setRows(current => current.map(row => row.id === id ? { ...row, [key]: value } : row));
   const updateObjective = (row, objective) => setRows(current => current.map(item => item.id === row.id ? {
@@ -174,6 +176,8 @@ export default function MediaPlan({ edition }) {
       <div className={`card${spend.unclassified ? " media-plan-warning" : ""}`}><span>Spend ที่ยังไม่จัดหมวด</span><b>฿{money(spend.unclassified)}</b></div>
     </section>
 
+    <BudgetFunnel totals={funnelTotals} campaignBudget={campaignBudget} reserveTotal={reserveTotal} />
+
     <section className="card media-plan-table-card">
       <div className="media-plan-table-wrap"><table className="media-plan-table">
         <thead><tr><th aria-label="สลับลำดับ" /><th>Objective</th><th>Channel</th><th>Budget</th><th>Amount Spend</th><th>Remaining</th><th>Pacing</th><th aria-label="จัดการ" /></tr></thead>
@@ -210,4 +214,42 @@ export default function MediaPlan({ edition }) {
 
     <Link className="pivot-link feature-dashboard-link" href={`/event/${edition.slug}`}>← กลับหน้า Dashboard</Link>
   </main>;
+}
+
+function BudgetFunnel({ totals, campaignBudget, reserveTotal }) {
+  const stages = [
+    { label: "Awareness", points: "20,0 580,0 500,90 100,90", y: 45, color: "#dce9ff", text: "#174b9a" },
+    { label: "Engagement", points: "100,90 500,90 435,180 165,180", y: 135, color: "#a8c8fb", text: "#174b9a" },
+    { label: "Traffic", points: "165,180 435,180 375,270 225,270", y: 225, color: "#5e92e4", text: "#ffffff" },
+    { label: "Sales", points: "225,270 375,270 340,360 260,360", y: 315, color: "#245fb8", text: "#ffffff" },
+  ].map(stage => ({ ...stage, ...(totals.find(total => total.objective === stage.label) || { budget: 0 }) }));
+
+  return <section className="card media-budget-funnel-card">
+    <div className="media-budget-funnel-head">
+      <div><h2>Budget Funnel</h2><p>งบที่จัดสรรในแต่ละ Objective และสัดส่วนเทียบ Campaign Total Budget</p></div>
+      <span>CAMPAIGN BUDGET · ฿{money(campaignBudget)}</span>
+    </div>
+    <div className="media-budget-funnel-layout">
+      <div className="media-budget-funnel-graphic">
+        <svg viewBox="0 0 600 360" role="img" aria-label="Funnel งบ Awareness, Engagement, Traffic และ Sales">
+          {stages.map(stage => <g key={stage.label}>
+            <polygon points={stage.points} fill={stage.color} />
+            <text className="media-budget-stage-label" x="300" y={stage.y - 11} fill={stage.text}>{stage.label}</text>
+            <text className="media-budget-stage-value" x="300" y={stage.y + 16} fill={stage.text}>฿{money(stage.budget)}</text>
+          </g>)}
+        </svg>
+      </div>
+      <div className="media-budget-share-list">
+        {stages.map(stage => {
+          const share = campaignBudget ? stage.budget / campaignBudget * 100 : null;
+          return <div className="media-budget-share" key={stage.label}>
+            <span>{stage.label}</span>
+            <b>{share === null ? "—" : `${share.toFixed(1)}%`}</b>
+            <small>ของ Campaign Total Budget</small>
+          </div>;
+        })}
+      </div>
+    </div>
+    <div className="media-budget-reserve"><span>กันงบ (ไม่นับใน Funnel)</span><b>฿{money(reserveTotal)}</b><small>{campaignBudget ? `${(reserveTotal / campaignBudget * 100).toFixed(1)}% ของ Campaign Total Budget` : "ยังไม่ได้กำหนด Campaign Total Budget"}</small></div>
+  </section>;
 }
