@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
-import EventFeaturePage from "@/components/EventFeaturePage";
+import TotalTickets from "@/components/TotalTickets";
 import { editionTitle, findEdition } from "@/lib/events";
 
 export default function TotalTicketsPage({ params }) {
@@ -9,6 +9,6 @@ export default function TotalTicketsPage({ params }) {
 
   return <>
     <TopBar title={`${editionTitle(edition)} · Total Tickets`} back />
-    <EventFeaturePage edition={edition} feature="total-tickets" />
+    <TotalTickets edition={edition} />
   </>;
 }
