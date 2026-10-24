@@ -44,6 +44,7 @@ function channelOf(row) {
 
 export default function MediaPlan({ edition }) {
   const [rows, setRows] = useState([]);
+  const [draggingId, setDraggingId] = useState("");
   const [ads, setAds] = useState(null);
   const [note, setNote] = useState("กำลังโหลด Media Plan…");
   const [saving, setSaving] = useState(false);
@@ -101,6 +102,19 @@ export default function MediaPlan({ edition }) {
   } : item));
   const addRow = () => setRows(current => [...current, { id: crypto.randomUUID(), objective: "Awareness", channel: "Facebook", budget: 0 }]);
   const removeRow = id => setRows(current => current.length > 1 ? current.filter(row => row.id !== id) : current);
+  const moveRow = (sourceId, targetId) => setRows(current => {
+    const sourceIndex = current.findIndex(row => row.id === sourceId);
+    const targetIndex = current.findIndex(row => row.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return current;
+    const sourceGroup = OBJECTIVE_GROUPS.find(group => group.objectives.includes(current[sourceIndex].objective));
+    const targetGroup = OBJECTIVE_GROUPS.find(group => group.objectives.includes(current[targetIndex].objective));
+    if (sourceGroup?.label !== targetGroup?.label) return current;
+    const next = [...current];
+    const [moved] = next.splice(sourceIndex, 1);
+    const insertionIndex = next.findIndex(row => row.id === targetId);
+    next.splice(insertionIndex, 0, moved);
+    return next;
+  });
 
   async function save() {
     setSaving(true); setNote("กำลังบันทึก…");
@@ -145,7 +159,7 @@ export default function MediaPlan({ edition }) {
 
     <section className="card media-plan-table-card">
       <div className="media-plan-table-wrap"><table className="media-plan-table">
-        <thead><tr><th>Objective</th><th>Channel</th><th>Budget</th><th>Amount Spend</th><th>Remaining</th><th>Pacing</th><th aria-label="จัดการ" /></tr></thead>
+        <thead><tr><th aria-label="สลับลำดับ" /><th>Objective</th><th>Channel</th><th>Budget</th><th>Amount Spend</th><th>Remaining</th><th>Pacing</th><th aria-label="จัดการ" /></tr></thead>
         <tbody>
           {OBJECTIVE_GROUPS.flatMap(group => {
             const objectiveRows = rows.filter(row => group.objectives.includes(row.objective));
@@ -155,7 +169,8 @@ export default function MediaPlan({ edition }) {
               ...objectiveRows.map(row => {
                 const actual = actualByRow[row.id] || 0;
                 const budget = Number(row.budget) || 0;
-                return <tr key={row.id}>
+                return <tr key={row.id} className={draggingId === row.id ? "is-dragging" : ""} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); moveRow(event.dataTransfer.getData("text/plain") || draggingId, row.id); setDraggingId(""); }}>
+                  <td><button type="button" className="media-plan-drag" draggable onDragStart={event => { setDraggingId(row.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.id); }} onDragEnd={() => setDraggingId("")} aria-label={`ลากเพื่อสลับลำดับ ${row.objective} ${row.channel}`} title="ลากเพื่อสลับลำดับ">⠿</button></td>
                   <td><select value={row.objective} onChange={event => updateObjective(row, event.target.value)}>{OBJECTIVES.map(value => <option key={value}>{value}</option>)}</select></td>
                   <td>{row.objective === "กันงบ"
                     ? <input className="media-plan-label-input" type="text" maxLength="120" placeholder="ระบุว่างบค่าอะไร" value={row.channel} onChange={event => updateRow(row.id, "channel", event.target.value)} />
@@ -167,11 +182,11 @@ export default function MediaPlan({ edition }) {
                   <td><button type="button" className="media-plan-remove" onClick={() => removeRow(row.id)} aria-label="ลบแถว">×</button></td>
                 </tr>;
               }),
-              <tr className="media-plan-subtotal" key={`${group.label}-total`}><td colSpan="2">{group.label} Total</td><td>฿{money(subtotal.budget)}</td><td>฿{money(subtotal.spent)}</td><td>฿{money(subtotal.budget - subtotal.spent)}</td><td>{subtotal.budget ? `${(subtotal.spent / subtotal.budget * 100).toFixed(1)}%` : "—"}</td><td /></tr>,
+              <tr className="media-plan-subtotal" key={`${group.label}-total`}><td /><td colSpan="2">{group.label} Total</td><td>฿{money(subtotal.budget)}</td><td>฿{money(subtotal.spent)}</td><td>฿{money(subtotal.budget - subtotal.spent)}</td><td>{subtotal.budget ? `${(subtotal.spent / subtotal.budget * 100).toFixed(1)}%` : "—"}</td><td /></tr>,
             ];
           })}
         </tbody>
-        <tfoot><tr><td colSpan="2">Grand Total</td><td>฿{money(totalBudget)}</td><td>฿{money(allocatedSpend)}</td><td>฿{money(totalBudget - allocatedSpend)}</td><td>{totalBudget ? `${(allocatedSpend / totalBudget * 100).toFixed(1)}%` : "—"}</td><td /></tr></tfoot>
+        <tfoot><tr><td /><td colSpan="2">Grand Total</td><td>฿{money(totalBudget)}</td><td>฿{money(allocatedSpend)}</td><td>฿{money(totalBudget - allocatedSpend)}</td><td>{totalBudget ? `${(allocatedSpend / totalBudget * 100).toFixed(1)}%` : "—"}</td><td /></tr></tfoot>
       </table></div>
       <div className="media-plan-foot"><p className={note.includes("ไม่") ? "err" : "muted"}>{note}</p><p className="muted">Spend จับคู่จากชื่อ Campaign กับ Objective และ Channel เท่านั้น เช่น QU-XXXX_Sales_Google PMAX รายการที่ระบุไม่ได้จะอยู่ใน “Spend ที่ยังไม่จัดหมวด” เพื่อไม่เดาตัวเลข</p></div>
     </section>
