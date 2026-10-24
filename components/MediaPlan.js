@@ -14,7 +14,7 @@ const OBJECTIVE_GROUPS = [
 const CHANNELS = ["Facebook", "Instagram", "Google PMAX", "Google Search", "Google Display", "Google Demand Gen", "YouTube"];
 const GOOGLE_CHANNEL_OBJECTIVES = {
   "Google PMAX": "Sales",
-  "Google Search": "Sales",
+  "Google Search": "Traffic",
   "Google Display": "Awareness",
   "Google Demand Gen": "Awareness",
   YouTube: "Video View",
