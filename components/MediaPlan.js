@@ -51,6 +51,7 @@ function channelOf(row) {
 
 export default function MediaPlan({ edition }) {
   const [rows, setRows] = useState([]);
+  const [campaignBudget, setCampaignBudget] = useState(0);
   const [draggingId, setDraggingId] = useState("");
   const [ads, setAds] = useState(null);
   const [note, setNote] = useState("กำลังโหลด Media Plan…");
@@ -63,7 +64,11 @@ export default function MediaPlan({ edition }) {
       fetch(`/api/ads?slug=${encodeURIComponent(edition.slug)}`).then(r => r.json()),
     ]).then(([plan, adData]) => {
       if (plan.error) throw new Error(plan.error);
-      setRows(plan.rows || []);
+      const loadedRows = plan.rows || [];
+      setRows(loadedRows);
+      setCampaignBudget(plan.campaignBudget === null
+        ? loadedRows.reduce((sum, row) => sum + (Number(row.budget) || 0), 0)
+        : Math.max(0, Number(plan.campaignBudget) || 0));
       if (!adData.error) setAds(adData);
       setNote(plan.updatedAt ? `บันทึกล่าสุด ${new Date(plan.updatedAt).toLocaleString("th-TH")}` : "ยังไม่เคยบันทึกแผนนี้");
     }).catch(error => setNote(error.message));
@@ -101,6 +106,7 @@ export default function MediaPlan({ edition }) {
     };
   }), [rows, actualByRow]);
   const totalBudget = rows.reduce((sum, row) => sum + (Number(row.budget) || 0), 0);
+  const allocationGap = campaignBudget - totalBudget;
   const allocatedSpend = objectiveTotals.reduce((sum, row) => sum + row.spent, 0);
 
   const updateRow = (id, key, value) => setRows(current => current.map(row => row.id === id ? { ...row, [key]: value } : row));
@@ -128,10 +134,10 @@ export default function MediaPlan({ edition }) {
   async function save() {
     setSaving(true); setNote("กำลังบันทึก…");
     try {
-      const response = await fetch("/api/media-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: edition.slug, rows }) });
+      const response = await fetch("/api/media-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: edition.slug, rows, campaignBudget }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "บันทึกไม่สำเร็จ");
-      setRows(data.rows); setNote("บันทึก Media Plan แล้ว");
+      setRows(data.rows); setCampaignBudget(data.campaignBudget); setNote("บันทึก Media Plan แล้ว");
     } catch (error) { setNote(error.message); }
     finally { setSaving(false); }
   }
@@ -160,9 +166,11 @@ export default function MediaPlan({ edition }) {
     <EventNav edition={edition} current="media-plan" />
 
     <section className="media-plan-summary">
-      <div className="card"><span>Plan Budget</span><b>฿{money(totalBudget)}</b></div>
+      <div className="card media-plan-budget-card"><span>Campaign Total Budget</span><div className="media-plan-budget-input"><span>฿</span><input aria-label="Campaign Total Budget" type="number" min="0" step="100" value={campaignBudget} onChange={event => setCampaignBudget(Math.max(0, Number(event.target.value) || 0))} /></div><small>กด “บันทึก Media Plan” เพื่อจำค่านี้</small></div>
+      <div className="card"><span>Plan Budget ที่จัดสรรแล้ว</span><b>฿{money(totalBudget)}</b></div>
+      <div className={`card media-plan-allocation${allocationGap < 0 ? " is-over" : allocationGap > 0 ? " is-short" : " is-balanced"}`}><span>เทียบ Campaign Budget</span><b>{allocationGap > 0 ? `ขาดจัดสรร ฿${money(allocationGap)}` : allocationGap < 0 ? `เกินงบ ฿${money(Math.abs(allocationGap))}` : "จัดสรรครบพอดี"}</b></div>
       <div className="card"><span>Amount Spend ที่จับคู่ได้</span><b>฿{money(allocatedSpend)}</b></div>
-      <div className="card"><span>Overall Pacing</span><b>{totalBudget ? `${(allocatedSpend / totalBudget * 100).toFixed(1)}%` : "—"}</b></div>
+      <div className="card"><span>Overall Pacing เทียบ Campaign Budget</span><b>{campaignBudget ? `${(allocatedSpend / campaignBudget * 100).toFixed(1)}%` : "—"}</b></div>
       <div className={`card${spend.unclassified ? " media-plan-warning" : ""}`}><span>Spend ที่ยังไม่จัดหมวด</span><b>฿{money(spend.unclassified)}</b></div>
     </section>
 

@@ -33,8 +33,11 @@ export async function GET(req) {
   const saved = await readEventConfig(slug);
   const plan = saved?.config?.mediaPlan;
   const rows = cleanRows(plan?.rows);
+  const campaignBudget = plan && Object.prototype.hasOwnProperty.call(plan, "campaignBudget")
+    ? Math.max(0, Number(plan.campaignBudget) || 0)
+    : null;
   return Response.json(
-    { storage: hasDb(), rows: rows.length ? rows : defaults(), updatedAt: plan?.updatedAt || null },
+    { storage: hasDb(), rows: rows.length ? rows : defaults(), campaignBudget, updatedAt: plan?.updatedAt || null },
     { headers: { "Cache-Control": "no-store, max-age=0" } },
   );
 }
@@ -46,7 +49,8 @@ export async function POST(req) {
   if (!hasDb()) return Response.json({ error: "ยังไม่ได้เชื่อมฐานข้อมูล" }, { status: 503 });
   const rows = cleanRows(body.rows);
   if (!rows.length) return Response.json({ error: "Media Plan ต้องมีอย่างน้อย 1 แถว" }, { status: 400 });
+  const campaignBudget = Math.max(0, Number(body.campaignBudget) || 0);
   const updatedAt = new Date().toISOString();
-  const saved = await writeEventConfig(edition.slug, { mediaPlan: { rows, updatedAt } });
-  return Response.json({ rows, updatedAt, saved });
+  const saved = await writeEventConfig(edition.slug, { mediaPlan: { rows, campaignBudget, updatedAt } });
+  return Response.json({ rows, campaignBudget, updatedAt, saved });
 }
