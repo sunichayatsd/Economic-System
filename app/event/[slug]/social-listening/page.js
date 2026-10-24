@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
-import EventFeaturePage from "@/components/EventFeaturePage";
+import SocialListening from "@/components/SocialListening";
 import { editionTitle, findEdition } from "@/lib/events";
 
 export default function SocialListeningPage({ params }) {
@@ -9,6 +9,6 @@ export default function SocialListeningPage({ params }) {
 
   return <>
     <TopBar title={`${editionTitle(edition)} · Social Listening`} back />
-    <EventFeaturePage edition={edition} feature="social-listening" />
+    <SocialListening edition={edition} />
   </>;
 }
