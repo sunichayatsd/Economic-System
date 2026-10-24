@@ -13,6 +13,7 @@ export default function TopBar({ title, back, wide = false }) {
         </div>
         {data?.user && (
           <div className="who">
+            {data.user.isAdmin && <Link href="/admin" className="admin-link">Admin</Link>}
             <span>{data.user.email}</span>
             <button className="ghost" onClick={() => signOut({ callbackUrl: "/login" })}>ออกจากระบบ</button>
           </div>
