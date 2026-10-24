@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import EventNav from "@/components/EventNav";
 
 const presentation = [
   { title: "Event page", description: "users viewed", accent: "blue", action: "Buy ticket", imageUrl: "/journey/economic-2026/event-page.png" },
@@ -86,6 +87,7 @@ export default function CustomerJourney({ edition }) {
       <div><p className="sync-kicker">GOOGLE ANALYTICS 4 · CUSTOMER JOURNEY</p><h2>Customer Journey</h2><p className="muted">ตั้งค่าแยกตาม Event แล้วดึงตัวเลขตามช่วงเวลาที่เลือก</p></div>
       <Link className="ghost pivot-back" href={`/event/${edition.slug}`}>← กลับหน้าแดชบอร์ด</Link>
     </div>
+    <EventNav edition={edition} current="journey" />
 
     <section className="journey-controls" aria-label="ตัวกรอง Customer Journey">
       <label>ช่วงเวลา ตั้งแต่ <input type="date" value={range[0]} onChange={event => changeRange([event.target.value, range[1]])} /></label>

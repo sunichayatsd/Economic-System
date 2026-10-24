@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EventNav from "@/components/EventNav";
 
 const FEATURES = {
   "media-plan": {
@@ -43,6 +44,8 @@ export default function EventFeaturePage({ edition, feature }) {
       <p>{content.description}</p>
       <span className="feature-status">กำลังเตรียมระบบเชื่อมต่อข้อมูล</span>
     </section>
+
+    <EventNav edition={edition} current={feature} />
 
     <section className="feature-grid" aria-label={`${content.title} modules`}>
       {content.sections.map(([title, description], index) => <article className="feature-module card" key={title}>

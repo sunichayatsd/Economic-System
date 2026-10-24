@@ -2,22 +2,23 @@ import { findEdition } from "@/lib/events";
 import { hasDb, readEventConfig, writeEventConfig } from "@/lib/db";
 
 const OBJECTIVES = new Set(["Awareness", "Video View", "Engagement", "Traffic", "Sales", "กันงบ"]);
-const CHANNELS = new Set(["Facebook", "Instagram", "PMAX", "YouTube"]);
+const CHANNELS = new Set(["Facebook", "Instagram", "Google PMAX", "Google Search", "Google Display", "Google Demand Gen", "YouTube"]);
 const defaults = () => [
   { id: crypto.randomUUID(), objective: "Awareness", channel: "Facebook", budget: 0 },
   { id: crypto.randomUUID(), objective: "Engagement", channel: "Instagram", budget: 0 },
   { id: crypto.randomUUID(), objective: "Traffic", channel: "Facebook", budget: 0 },
-  { id: crypto.randomUUID(), objective: "Sales", channel: "PMAX", budget: 0 },
+  { id: crypto.randomUUID(), objective: "Sales", channel: "Google PMAX", budget: 0 },
 ];
 
 const cleanRows = rows => (Array.isArray(rows) ? rows : []).slice(0, 100).map((row, index) => {
   const objective = OBJECTIVES.has(row.objective) ? row.objective : "Awareness";
+  const channel = row.channel === "PMAX" ? "Google PMAX" : row.channel;
   return {
     id: String(row.id || `row-${index + 1}`).slice(0, 80),
     objective,
     channel: objective === "กันงบ"
       ? String(row.channel || "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 120)
-      : (CHANNELS.has(row.channel) ? row.channel : "Facebook"),
+      : (CHANNELS.has(channel) ? channel : "Facebook"),
     budget: Math.max(0, Number(row.budget) || 0),
   };
 });

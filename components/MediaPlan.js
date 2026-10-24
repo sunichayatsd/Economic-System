@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import EventNav from "@/components/EventNav";
 
 const OBJECTIVES = ["Awareness", "Video View", "Engagement", "Traffic", "Sales", "กันงบ"];
 const OBJECTIVE_GROUPS = [
@@ -10,7 +11,7 @@ const OBJECTIVE_GROUPS = [
   { label: "Sales", objectives: ["Sales"] },
   { label: "กันงบ", objectives: ["กันงบ"] },
 ];
-const CHANNELS = ["Facebook", "Instagram", "PMAX", "YouTube"];
+const CHANNELS = ["Facebook", "Instagram", "Google PMAX", "Google Search", "Google Display", "Google Demand Gen", "YouTube"];
 const money = n => new Intl.NumberFormat("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const tokenText = value => String(value || "").toLowerCase().replace(/[\s_-]+/g, " ");
 
@@ -32,8 +33,11 @@ function channelOf(row) {
     return "";
   }
   if (row.platform === "Google Ads") {
+    if (/demand gen|demandgen|(^| )dgen( |$)|discovery/.test(text)) return "Google Demand Gen";
+    if (/pmax|performance max/.test(text)) return "Google PMAX";
+    if (/google search|paid search|(^| )search( |$)|(^| )sem( |$)/.test(text)) return "Google Search";
+    if (/google display|(^| )display( |$)|(^| )gdn( |$)/.test(text)) return "Google Display";
     if (/youtube|(^| )yt( |$)|video/.test(text)) return "YouTube";
-    if (/pmax|performance max/.test(text)) return "PMAX";
   }
   return "";
 }
@@ -130,6 +134,8 @@ export default function MediaPlan({ edition }) {
       </div>
     </section>
 
+    <EventNav edition={edition} current="media-plan" />
+
     <section className="media-plan-summary">
       <div className="card"><span>Plan Budget</span><b>฿{money(totalBudget)}</b></div>
       <div className="card"><span>Amount Spend ที่จับคู่ได้</span><b>฿{money(allocatedSpend)}</b></div>
@@ -167,7 +173,7 @@ export default function MediaPlan({ edition }) {
         </tbody>
         <tfoot><tr><td colSpan="2">Grand Total</td><td>฿{money(totalBudget)}</td><td>฿{money(allocatedSpend)}</td><td>฿{money(totalBudget - allocatedSpend)}</td><td>{totalBudget ? `${(allocatedSpend / totalBudget * 100).toFixed(1)}%` : "—"}</td><td /></tr></tfoot>
       </table></div>
-      <div className="media-plan-foot"><p className={note.includes("ไม่") ? "err" : "muted"}>{note}</p><p className="muted">Spend จับคู่จากชื่อ Campaign กับ Objective และ Channel เท่านั้น รายการที่ระบุไม่ได้จะอยู่ใน “Spend ที่ยังไม่จัดหมวด” เพื่อไม่เดาตัวเลข</p></div>
+      <div className="media-plan-foot"><p className={note.includes("ไม่") ? "err" : "muted"}>{note}</p><p className="muted">Spend จับคู่จากชื่อ Campaign กับ Objective และ Channel เท่านั้น เช่น QU-XXXX_Sales_Google PMAX รายการที่ระบุไม่ได้จะอยู่ใน “Spend ที่ยังไม่จัดหมวด” เพื่อไม่เดาตัวเลข</p></div>
     </section>
 
     <Link className="pivot-link feature-dashboard-link" href={`/event/${edition.slug}`}>← กลับหน้า Dashboard</Link>

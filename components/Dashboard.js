@@ -2,11 +2,11 @@
 // The Zip export is parsed here in the browser: names, emails and phone numbers never leave the page.
 // Only Meta ad data comes from the server (/api/ads → Supermetrics).
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import * as XLSX from "xlsx";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { attribute, capacityOk, creativeFromAdName, creativeForRef } from "@/lib/engine";
+import EventNav from "@/components/EventNav";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -310,13 +310,7 @@ export default function Dashboard({ edition }) {
         </div>
       </section>
 
-      <div className="pivot-entry">
-        <Link className="pivot-link" href={`/event/${edition.slug}/pivot`}>เปิด Pivot Table <span aria-hidden="true">→</span></Link>
-        <Link className="pivot-link" href={`/event/${edition.slug}/journey`}>Customer Journey <span aria-hidden="true">→</span></Link>
-        <Link className="pivot-link" href={`/event/${edition.slug}/media-plan`}>Media Plan <span aria-hidden="true">→</span></Link>
-        <Link className="pivot-link" href={`/event/${edition.slug}/total-tickets`}>Total Tickets <span aria-hidden="true">→</span></Link>
-        <Link className="pivot-link" href={`/event/${edition.slug}/social-listening`}>Social Listening <span aria-hidden="true">→</span></Link>
-      </div>
+      <EventNav edition={edition} />
 
       {view && (
         <>
